@@ -24,6 +24,8 @@ import com.google.common.collect.MultimapBuilder;
 
 import java.awt.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -254,10 +256,16 @@ public final class SLayoutIO {
      */
     public static void saveLayout(final File f0) {
         if( saveRequested.getAndSet(true) ) return; 
-        ThreadUtil.delay(100, () -> {
-            save(f0);
-            saveRequested.set(false);
-        });
+        final FScreen requestedScreen = Singletons.getControl().getCurrentScreen();
+        ThreadUtil.delay(100, () -> FThreads.invokeInEdtLater(() -> {
+            try {
+                if (Singletons.getControl().getCurrentScreen() == requestedScreen) {
+                    save(f0);
+                }
+            } finally {
+                saveRequested.set(false);
+            }
+        }));
     }
 
     private synchronized static void save(final File f0) {
@@ -276,10 +284,11 @@ public final class SLayoutIO {
 
         final XMLOutputFactory out = XMLOutputFactory.newInstance();
         XMLEventWriter writer = null;
-        try(FileOutputStream fos = new FileOutputStream(fWriteTo);) {
-            String layoutSerial = getLayoutSerial(file.defaultLoc);
-            writer = out.createXMLEventWriter(fos);
+        try (ByteArrayOutputStream document = new ByteArrayOutputStream()) {
+            String layoutSerial = file == null ? "" : getLayoutSerial(file.defaultLoc);
+            writer = out.createXMLEventWriter(document);
             final List<DragCell> cells = FView.SINGLETON_INSTANCE.getDragCells();
+            if (cells.isEmpty()) { return; }
 
             writer.add(EF.createStartDocument());
             writer.add(NEWLINE);
@@ -290,6 +299,12 @@ public final class SLayoutIO {
             for (final DragCell cell : cells) {
                 cell.updateRoughBounds();
                 RectangleOfDouble bounds = cell.getRoughBounds();
+                if (!Double.isFinite(bounds.getX()) || !Double.isFinite(bounds.getY())
+                        || !Double.isFinite(bounds.getW()) || !Double.isFinite(bounds.getH())
+                        || bounds.getX() < 0 || bounds.getY() < 0
+                        || bounds.getW() <= 0 || bounds.getH() <= 0) {
+                    throw new IllegalArgumentException("Invalid panel geometry; layout not saved");
+                }
                 
                 writer.add(TAB);
                 writer.add(EF.createStartElement("", "", "cell"));
@@ -310,10 +325,12 @@ public final class SLayoutIO {
                 writer.add(EF.createEndElement("", "", "cell"));
                 writer.add(NEWLINE);
             }
-            writer.flush(); 
+            writer.add(EF.createEndElement("", "", "layout"));
             writer.add(EF.createEndDocument());
-        } catch (XMLStreamException | IOException e) {
-            // TODO Auto-generated catch block ignores the exception, but sends it to System.err and probably forge.log.
+            writer.flush();
+            LayoutFileStore.write(Path.of(fWriteTo), document.toByteArray());
+        } catch (XMLStreamException | IOException | RuntimeException e) {
+            System.err.println("Layout save failed; the previous saved layout has been preserved.");
             e.printStackTrace();
         } finally {
             if ( writer != null )
@@ -427,10 +444,14 @@ public final class SLayoutIO {
                 }
 
                 final XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+                inputFactory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+                inputFactory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
                 XMLEventReader xer = null;
                 try {
                     xer = inputFactory.createXMLEventReader(fis);
                     model = readLayout(xer);
+                    if (model.isEmpty()) { throw new XMLStreamException("Layout has no panels"); }
+                    xer.close();
                 } catch (final Exception e) { // I don't care what happened inside, the layout is wrong
                     try {
                         if (xer != null) { xer.close(); }
@@ -439,8 +460,9 @@ public final class SLayoutIO {
                         x.printStackTrace();
                     }
                     e.printStackTrace();
-                    if (usedCustomPrefsFile) { // the one we can safely delete
-                        throw new InvalidLayoutFileException();
+                    if (usedCustomPrefsFile) {
+                        if (fis != null) { fis.close(); fis = null; }
+                        model = recoverLayout(file);
                     }
                     else {
                         throw new RuntimeException(e);
@@ -448,7 +470,7 @@ public final class SLayoutIO {
                 }
 
             }
-            catch (FileNotFoundException e) {
+            catch (IOException e) {
                 throw new RuntimeException(e);
             }
             finally {
@@ -491,6 +513,52 @@ public final class SLayoutIO {
 
     private record LayoutInfo(RectangleOfDouble bounds, EDocID selectedId) { }
 
+    private static ListMultimap<LayoutInfo, EDocID> readLayoutDocument(final Path path) throws IOException {
+        final XMLInputFactory factory = XMLInputFactory.newFactory();
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        try (InputStream stream = Files.newInputStream(path)) {
+            final XMLEventReader reader = factory.createXMLEventReader(stream);
+            try {
+                final ListMultimap<LayoutInfo, EDocID> result = readLayout(reader);
+                if (result.isEmpty()) { throw new IOException("Layout has no panels"); }
+                return result;
+            } finally {
+                reader.close();
+            }
+        } catch (XMLStreamException | RuntimeException e) {
+            throw new IOException("Invalid layout: " + path, e);
+        }
+    }
+
+    private static ListMultimap<LayoutInfo, EDocID> recoverLayout(final FileLocation file) throws IOException {
+        final Path original = Path.of(file.userPrefLoc).toAbsolutePath();
+        try {
+            final Path preserved = Files.createTempFile(original.getParent(), original.getFileName() + ".invalid-", ".xml");
+            Files.copy(original, preserved, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            System.err.println("Preserved unreadable layout at " + preserved);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        final Path backup = LayoutFileStore.backupOf(original);
+        Path recoverySource = backup;
+        ListMultimap<LayoutInfo, EDocID> recovered;
+        try {
+            recovered = readLayoutDocument(backup);
+        } catch (IOException e) {
+            recoverySource = Path.of(file.defaultLoc);
+            recovered = readLayoutDocument(recoverySource);
+        }
+        try {
+            LayoutFileStore.write(original, Files.readAllBytes(recoverySource));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        final String key = recoverySource.equals(backup) ? "lblIERALayoutBackupRecovered" : "lblIERALayoutDefaultRecovered";
+        FThreads.invokeInEdtLater(() -> SOptionPane.showMessageDialog(forge.util.Localizer.getInstance().getMessage(key)));
+        return recovered;
+    }
+
     private static ListMultimap<LayoutInfo, EDocID> readLayout(final XMLEventReader reader) throws XMLStreamException
     {
         XMLEvent event;
@@ -510,6 +578,8 @@ public final class SLayoutIO {
                 element = event.asStartElement();
 
                 if (element.getName().getLocalPart().equals("cell")) {
+                    selectedId = null;
+                    x0 = 0; y0 = 0; w0 = 0; h0 = 0;
                     attributes = element.getAttributes();
                     while (attributes.hasNext()) {
                         attribute = (Attribute) attributes.next();
@@ -520,6 +590,10 @@ public final class SLayoutIO {
                         else if (atrName.equals(Property.w)) w0 = Double.parseDouble(attribute.getValue());
                         else if (atrName.equals(Property.h)) h0 = Double.parseDouble(attribute.getValue());
                         else if (atrName.equals(Property.sel)) selectedId = EDocID.valueOf(attribute.getValue());
+                    }
+                    if (!Double.isFinite(x0) || !Double.isFinite(y0) || !Double.isFinite(w0) || !Double.isFinite(h0)
+                            || x0 < 0 || y0 < 0 || w0 <= 0 || h0 <= 0) {
+                        throw new XMLStreamException("Invalid panel bounds");
                     }
                     currentKey = new LayoutInfo(new RectangleOfDouble(x0, y0, w0, h0), selectedId);
                 }
@@ -541,4 +615,3 @@ public final class SLayoutIO {
         writer0.add(NEWLINE);
     }
 }
- 

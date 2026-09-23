@@ -27,6 +27,9 @@ import forge.gui.framework.IVDoc;
 import forge.screens.match.CMatchUI;
 import forge.screens.match.controllers.CHand;
 import forge.toolbox.FScrollPane;
+import forge.toolbox.special.PlayerStatusBar;
+import forge.toolbox.special.PhaseTimeline;
+import forge.toolbox.FSkin;
 import forge.util.Localizer;
 import forge.view.arcane.HandArea;
 import net.miginfocom.swing.MigLayout;
@@ -48,6 +51,9 @@ public class VHand implements IVDoc<CHand> {
     // Top-level containers
     private final FScrollPane scroller = new FScrollPane(false);
     private final HandArea hand;
+    private final PlayerStatusBar statusBar;
+    private final PhaseTimeline timeline;
+    private final CMatchUI matchUI;
 
     //========= Constructor
     /**
@@ -57,8 +63,13 @@ public class VHand implements IVDoc<CHand> {
      * @param p &emsp; {@link forge.game.player.Player}
      */
     public VHand(final CMatchUI matchUI, final EDocID id0, final PlayerView p) {
+        this.matchUI = matchUI;
         this.hand = new HandArea(matchUI, scroller);
         this.player = p;
+        final VField field = p == null ? null : matchUI.getFieldViewFor(p);
+        statusBar = field == null ? null : field.getStatusBar();
+        timeline = statusBar == null ? null : new PhaseTimeline(FSkin.getFont(11).getBaseFont(),
+                key -> Localizer.getInstance().getMessage(key));
         docID = id0;
         id0.setDoc(this);
 
@@ -83,9 +94,24 @@ public class VHand implements IVDoc<CHand> {
     @Override
     public void populate() {
         final JPanel pnl = parentCell.getBody();
-        pnl.setLayout(new MigLayout("insets 0, gap 0"));
+        pnl.setLayout(new MigLayout("insets 0, gap 0, fill, wrap 1", "[grow,fill]",
+                statusBar == null ? "[grow,fill]" : "[][grow,fill]"));
+        if (statusBar != null) {
+            updateTimeline();
+            parentCell.setHeaderAccessory(timeline);
+            statusBar.updateStatus();
+            pnl.add(statusBar, "growx, h pref!");
+        }
+        pnl.add(scroller, "grow, push, w 0:100%, h 0:100%");
+    }
 
-        pnl.add(scroller, "w 100%, h 100%!");
+    public void updateTimeline() {
+        if (timeline == null) { return; }
+        final forge.game.GameView game = matchUI.getGameView();
+        final PlayerView turn = game == null || game.getPlayerTurn() == null ? player : game.getPlayerTurn();
+        final VField field = turn == null ? null : matchUI.getFieldViewFor(turn);
+        timeline.bind(turn == null ? "" : turn.getName(), field == null ? null : field.getPhaseIndicator(),
+                game == null ? null : game.getPhase());
     }
 
     /* (non-Javadoc)

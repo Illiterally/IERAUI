@@ -18,6 +18,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -92,6 +93,12 @@ public enum FView {
 
 	/** */
 	public void initialize() {
+		if (forge.gui.EnhancedRulesUi.isEnabled()) {
+			final ToolTipManager tooltips = ToolTipManager.sharedInstance();
+			tooltips.setInitialDelay(1500);
+			// Do not bypass the hover delay after leaving another tooltip.
+			tooltips.setReshowDelay(0);
+		}
 		// pnlInsets and navigationBar are skinned components
 		// which must be instantiated after the skin is loaded.
 		pnlInsets = new FPanel(new BorderLayout());

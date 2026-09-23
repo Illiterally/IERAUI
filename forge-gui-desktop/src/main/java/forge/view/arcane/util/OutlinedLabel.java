@@ -122,6 +122,10 @@ public class OutlinedLabel extends JLabel {
 //        }
         
         Graphics2D g2d = (Graphics2D) g;
+        if (isOpaque()) {
+            g2d.setColor(getBackground());
+            g2d.fillRoundRect(0, 0, size.width, size.height, 5, 5);
+        }
         
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);

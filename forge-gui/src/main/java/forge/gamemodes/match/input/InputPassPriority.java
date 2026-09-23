@@ -20,12 +20,14 @@ package forge.gamemodes.match.input;
 import forge.game.Game;
 import forge.game.GameView;
 import forge.game.card.Card;
+import forge.game.card.CardView;
 import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.PlayerView;
 import forge.game.player.actions.PassPriorityAction;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.StackItemView;
+import forge.game.zone.ZoneType;
 import forge.gamemodes.match.DeclineScope;
 import forge.gamemodes.match.SuggestionType;
 import forge.gamemodes.match.YieldController;
@@ -60,6 +62,9 @@ public class InputPassPriority extends InputSyncronizedBase {
 
     private SuggestionType pendingSuggestion = null;
     private String pendingSuggestionMessage = null;
+    private String priorityHelpText;
+
+    public String getPriorityHelpText() { return priorityHelpText; }
 
     public InputPassPriority(final PlayerControllerHuman controller) {
         super(controller);
@@ -134,6 +139,7 @@ public class InputPassPriority extends InputSyncronizedBase {
     }
 
     private void showYieldSuggestionPrompt() {
+        priorityHelpText = null;
         // State may have flipped between the initial check and now (e.g. async multiplayer click).
         if (isAlreadyYielding()) {
             pendingSuggestion = null;
@@ -164,14 +170,26 @@ public class InputPassPriority extends InputSyncronizedBase {
         pendingSuggestionMessage = null;
 
         getController().pushActionableCards(false);
-        showMessage(getTurnPhasePriorityMessage(getController().getGame()));
         chosenSa = null;
         Localizer localizer = Localizer.getInstance();
+        String passLabel = localizer.getMessage("lblOK");
+        final boolean enhanced = forge.gui.EnhancedRulesUi.isEnabled();
+        String message = getTurnPhasePriorityMessage(getController().getGame(), enhanced);
+        priorityHelpText = null;
+        CardView promptCard = null;
+        if (enhanced) {
+            final PriorityPrompt prompt = PriorityPrompt.forGame(getController().getGame(), getOwner());
+            passLabel = prompt.label();
+            message = prompt.explanation() + (message.isEmpty() ? "" : "\n" + message);
+            priorityHelpText = prompt.help();
+            promptCard = prompt.sourceCard();
+        }
+        showMessage(message, promptCard);
         if (getController().canUndoLastAction()) { //allow undoing with cancel button if can undo last action
-            getController().getGui().updateButtons(getOwner(), localizer.getMessage("lblOK"), localizer.getMessage("lblUndo") + " (" + getController().getGame().getStack().getUndoStackSize() + ")", true, true, true);
+            getController().getGui().updateButtons(getOwner(), passLabel, localizer.getMessage("lblUndo") + " (" + getController().getGame().getStack().getUndoStackSize() + ")", true, true, true);
         }
         else { //otherwise allow ending turn with cancel button
-            getController().getGui().updateButtons(getOwner(), localizer.getMessage("lblOK"), localizer.getMessage("lblEndTurn"), true, true, true);
+            getController().getGui().updateButtons(getOwner(), passLabel, localizer.getMessage("lblEndTurn"), true, true, true);
         }
 
         getController().getGui().alertUser();
@@ -331,6 +349,23 @@ public class InputPassPriority extends InputSyncronizedBase {
             return false;
         }
 
+        // A single tap ability normally fires immediately. During the opponent's
+        // combat that is easily mistaken for selecting this creature as a blocker.
+        // Consume a declined click so PlayArea cannot retry attached/grouped cards.
+        if (needsCombatTapConfirmation(card, abilities, triggerEvent)) {
+            final Localizer loc = Localizer.getInstance();
+            final PhaseType phase = getController().getGame().getPhaseHandler().getPhase();
+            final String hint = loc.getMessage(phase.isBefore(PhaseType.COMBAT_DECLARE_BLOCKERS)
+                    ? "lblIERATapBeforeBlocksHint" : "lblIERATapAfterBlocksHint");
+            final boolean activate = getController().getGui().confirm(CardView.get(card),
+                    loc.getMessage("lblIERACombatTapConfirm", card.getDisplayName(),
+                            abilities.get(0).toUnsuppressedString(), hint), false,
+                    List.of(loc.getMessage("lblIERAActivate"), loc.getMessage("lblCancel")));
+            if (!activate || isFinished() || getController().getInputQueue().getInput() != this) {
+                return true;
+            }
+        }
+
         final SpellAbility ability = getController().getAbilityToPlay(card, abilities, triggerEvent);
         if (ability != null) {
             chosenSa = new ArrayList<>();
@@ -350,6 +385,26 @@ public class InputPassPriority extends InputSyncronizedBase {
             stop();
     	}
         return true; //still return true if user cancelled selecting an ability to prevent selecting another card
+    }
+
+    private boolean needsCombatTapConfirmation(final Card card, final List<SpellAbility> abilities,
+                                               final ITriggerEvent triggerEvent) {
+        if (!forge.gui.EnhancedRulesUi.isEnabled() || triggerEvent == null
+                || getController().getGui().isLibgdxPort() || getController().getGui().isNetGame()
+                || getController().macros().isReplaying() || abilities.size() != 1
+                || !card.isCreature() || !card.isInZone(ZoneType.Battlefield)
+                || card.getController() != getController().getPlayer()) {
+            return false;
+        }
+        final var phases = getController().getGame().getPhaseHandler();
+        final PhaseType phase = phases.getPhase();
+        if (phase == null || phase.isBefore(PhaseType.COMBAT_BEGIN) || phase.isAfter(PhaseType.COMBAT_END)
+                || phases.getPlayerTurn() == card.getController()) {
+            return false;
+        }
+        final SpellAbility ability = abilities.get(0);
+        return !ability.isSpell() && !ability.isManaAbility() && !ability.promptIfOnlyPossibleAbility()
+                && ability.getPayCosts() != null && ability.getPayCosts().hasTapCost() && ability.canPlay(true);
     }
 
     @Override

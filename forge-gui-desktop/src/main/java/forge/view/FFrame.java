@@ -148,9 +148,11 @@ public class FFrame extends SkinnedFrame implements ITitleBarOwner {
 
     @Override
     public void setTitle(final String title) {
-        super.setTitle(title);
+        final String displayTitle = forge.gui.EnhancedRulesUi.isEnabled()
+                ? "Illiterally's Enhanced Rules Analysis UI — " + title : title;
+        super.setTitle(displayTitle);
         if (this.titleBar != null) {
-            this.titleBar.setTitle(title);
+            this.titleBar.setTitle(displayTitle);
         }
     }
 

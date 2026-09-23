@@ -57,6 +57,13 @@ public class FButton extends SkinnedButton implements ILocalRepaint, IButton {
     private boolean allImagesPresent = false;
     private boolean toggle = false;
     private boolean hovered = false;
+    private boolean secondaryAppearance;
+
+    /** Opt-in hierarchy for secondary match actions; other skinned buttons are unchanged. */
+    public void setSecondaryAppearance(final boolean secondary) {
+        secondaryAppearance = secondary;
+        repaint();
+    }
     private final AlphaComposite disabledComposite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.25f);
     private KeyAdapter klEnter;
 
@@ -227,6 +234,19 @@ public class FButton extends SkinnedButton implements ILocalRepaint, IButton {
 
     @Override
     protected void paintComponent(final Graphics g) {
+        if (secondaryAppearance) {
+            final Graphics2D secondary = (Graphics2D) g.create();
+            try {
+                secondary.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (!isEnabled()) { secondary.setComposite(AlphaComposite.SrcOver.derive(0.45f)); }
+                secondary.setColor(hovered || getModel().isPressed() ? new Color(50, 70, 83) : new Color(30, 44, 54));
+                secondary.fillRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 10, 10);
+                secondary.setColor(isFocusOwner() ? new Color(127, 207, 229) : new Color(102, 130, 144));
+                secondary.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 10, 10);
+                super.paintComponent(secondary);
+            } finally { secondary.dispose(); }
+            return;
+        }
         if (!allImagesPresent) {
             return;
         }

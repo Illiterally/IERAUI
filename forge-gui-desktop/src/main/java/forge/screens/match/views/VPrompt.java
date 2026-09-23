@@ -18,6 +18,7 @@
 package forge.screens.match.views;
 
 import java.awt.Font;
+import java.awt.BorderLayout;
 import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -61,10 +62,13 @@ public class VPrompt implements IVDoc<CPrompt> {
     // Various components
     private final FButton btnOK = new FButton(localizer.getMessage("lblOK"));
     private final FButton btnCancel = new FButton(localizer.getMessage("lblCancel"));
+    private final FButton btnManaAuto = new FButton(localizer.getMessage("lblAuto"));
     private final FHtmlViewer tarMessage = new FHtmlViewer();
     private final FScrollPane messageScroller = new FScrollPane(tarMessage, false,
     		ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
     private final JLabel lblGames;
+    private final FLabel lblPhase = new FLabel.Builder().fontSize(17).fontStyle(Font.BOLD).build();
+    private final FLabel lblDecision = new FLabel.Builder().fontSize(13).build();
     private CardView card = null;
 
     public void setCardView(final CardView card) {
@@ -98,6 +102,14 @@ public class VPrompt implements IVDoc<CPrompt> {
 
         btnOK.addKeyListener(buttonKeyAdapter);
         btnCancel.addKeyListener(buttonKeyAdapter);
+        btnManaAuto.addKeyListener(buttonKeyAdapter);
+        btnManaAuto.setVisible(false);
+        btnManaAuto.setEnabled(false);
+        btnManaAuto.setToolTipText(localizer.getMessage("lblIERAAutoManaHint"));
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            btnCancel.setSecondaryAppearance(true);
+            btnManaAuto.setSecondaryAppearance(true);
+        }
 
         tarMessage.setForeground(FSkin.getColor(FSkin.Colors.CLR_TEXT));
         tarMessage.setMargin(new Insets(3, 3, 3, 3));
@@ -132,10 +144,25 @@ public class VPrompt implements IVDoc<CPrompt> {
         }
         lblGames.setText(localizer.getMessage("lblGameSetup"));
 
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            container.add(lblPhase, "span 2, w 10:100%, h 32px!");
+            container.add(lblDecision, "span 2, w 10:100%, h 24px!");
+        }
+
         container.add(messageScroller, "span 2, w 10:100%, h 0:100%");
 
         boolean largerButtons = prefs.getPrefBoolean(FPref.UI_TOUCHSCREEN_OPTIMIZE);
         String constraints = largerButtons ? "w 10:50%, h 40%:40%:60px" : "w 10:50%, hmin 24px";
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            final JPanel paymentRow = new JPanel(new BorderLayout(5, 0));
+            paymentRow.setOpaque(false);
+            paymentRow.add(btnOK, BorderLayout.CENTER);
+            paymentRow.add(btnManaAuto, BorderLayout.EAST);
+            btnManaAuto.setPreferredSize(new java.awt.Dimension(58, 34));
+            container.add(paymentRow, "span 2, w 10:100%, hmin 34px, gaptop 3px!");
+            container.add(btnCancel, "span 2, w 10:100%, hmin 28px, gaptop 3px!");
+            return;
+        }
         constraints += ", gaptop 2px!";
 
         container.add(btnOK, constraints);
@@ -193,6 +220,8 @@ public class VPrompt implements IVDoc<CPrompt> {
         return this.btnCancel;
     }
 
+    public FButton getBtnManaAuto() { return btnManaAuto; }
+
     /** @return {@link javax.swing.JTextArea} */
     public FHtmlViewer getTarMessage() {
         return this.tarMessage;
@@ -202,4 +231,7 @@ public class VPrompt implements IVDoc<CPrompt> {
     public JLabel getLblGames() {
         return this.lblGames;
     }
+
+    public FLabel getLblPhase() { return lblPhase; }
+    public FLabel getLblDecision() { return lblDecision; }
 }

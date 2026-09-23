@@ -20,6 +20,7 @@ import forge.game.player.actions.PayManaFromPoolAction;
 import forge.game.spellability.AbilityManaPart;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityView;
+import forge.game.zone.ZoneType;
 import forge.gui.FThreads;
 import forge.player.PlayerControllerHuman;
 import forge.util.Evaluator;
@@ -49,6 +50,7 @@ public abstract class InputPayMana extends InputSyncronizedBase {
     private boolean autoPayManaSourcesKnown = false;
 
     private boolean locked = false;
+    private boolean manualPaymentRequested;
 
     protected InputPayMana(final PlayerControllerHuman controller, final SpellAbility saPaidFor0, final Player player0, final boolean effect) {
         super(controller);
@@ -374,6 +376,19 @@ public abstract class InputPayMana extends InputSyncronizedBase {
 
     @Override
     protected void onOk() {
+        if (usesManualPaymentUi() && !getController().macros().isReplaying()) {
+            if (!locked && !isFinished()) {
+                manualPaymentRequested = true;
+                updateMessage();
+            }
+            return;
+        }
+        autoPayMana();
+    }
+
+    /** Explicit opt-in shortcut; the primary Tap Mana action never calls this. */
+    public void autoPayMana() {
+        if (isFinished() || manaCost == null || manaCost.isPaid()) { return; }
         if (supportAutoPay() && !locked) { //prevent AI taking over from double-clicking Auto
             locked = true;
             //use AI utility to automatically pay mana cost if possible
@@ -387,11 +402,29 @@ public abstract class InputPayMana extends InputSyncronizedBase {
     }
 
     protected void updateButtons() {
+        if (usesManualPaymentUi()) {
+            getController().getGui().updateButtons(getOwner(), autoPayLabel(), Localizer.getInstance().getMessage("lblCancel"), !locked, !mandatory, true);
+            return;
+        }
         if (supportAutoPay()) {
-            getController().getGui().updateButtons(getOwner(), Localizer.getInstance().getMessage("lblAuto"), Localizer.getInstance().getMessage("lblCancel"), false, !mandatory, false);
+            getController().getGui().updateButtons(getOwner(), autoPayLabel(), Localizer.getInstance().getMessage("lblCancel"), false, !mandatory, false);
         } else {
             getController().getGui().updateButtons(getOwner(), "", Localizer.getInstance().getMessage("lblCancel"), false, !mandatory, false);
         }
+    }
+
+    private String autoPayLabel() {
+        return Localizer.getInstance().getMessage(usesManualPaymentUi() ? "lblIERATapMana" : "lblAuto");
+    }
+
+    public boolean usesManualPaymentUi() {
+        return forge.gui.EnhancedRulesUi.isEnabled() && !getController().getGui().isLibgdxPort()
+                && !getController().getGui().isNetGame();
+    }
+
+    public boolean canAutoPayMana() {
+        return !isFinished() && !locked && supportAutoPay() && manaCost != null && !manaCost.isPaid()
+                && autoPayManaSourcesKnown && autoPayManaSources != null;
     }
 
     protected final void updateMessage() {
@@ -400,20 +433,44 @@ public abstract class InputPayMana extends InputSyncronizedBase {
             return;
         }
         if (supportAutoPay()) {
+            // A manual tap, pool payment or nested mana ability may change the payment plan.
+            invalidateAutoPayManaSources();
             ensureAutoPayManaSources();
-            if (autoPayManaSources != null) { //enabled Auto button if mana cost can be paid
-                getController().getGui().updateButtons(getOwner(), Localizer.getInstance().getMessage("lblAuto"), Localizer.getInstance().getMessage("lblCancel"), true, !mandatory, true);
+            if (!usesManualPaymentUi() && autoPayManaSources != null) { //enabled Auto button if mana cost can be paid
+                getController().getGui().updateButtons(getOwner(), autoPayLabel(), Localizer.getInstance().getMessage("lblCancel"), true, !mandatory, true);
             }
         }
-        // Drop just-tapped sources from the highlight set; emphasize the AI's auto-tap plan.
-        getController().pushActionableCards(true, getAutoTapPreviewViews());
-        showMessage(getMessage(), saPaidFor.getView());
+        if (usesManualPaymentUi()) {
+            // Every currently usable choice, rather than just the AI's preferred payment plan.
+            final Set<CardView> sources = getManualManaSources();
+            getController().getGui().setWeaklySelectable(sources);
+            updateButtons();
+            final String hint = Localizer.getInstance().getMessage(manualPaymentRequested
+                    ? (sources.isEmpty() ? "lblIERANoManaSources" : "lblIERAChooseManaSources")
+                    : "lblIERATapManaHint");
+            showMessage(getMessage() + "\n\n" + hint, saPaidFor.getView());
+        } else {
+            getController().pushActionableCards(true, getAutoTapPreviewViews());
+            showMessage(getMessage(), saPaidFor.getView());
+        }
+    }
+
+    Set<CardView> getManualManaSources() {
+        final Set<CardView> result = new LinkedHashSet<>();
+        if (manaCost == null || manaCost.isPaid()) { return result; }
+        for (ZoneType zone : new ZoneType[] { ZoneType.Hand, ZoneType.Battlefield,
+                ZoneType.Graveyard, ZoneType.Exile, ZoneType.Command }) {
+            for (Card card : player.getCardsIn(zone).threadSafeIterable()) {
+                if (!getUsefulManaAbilities(card).isEmpty()) { result.add(card.getView()); }
+            }
+        }
+        return result;
     }
 
     @Override
     public void showMessage() {
         if (isFinished()) { return; }
-        getController().pushActionableCards(true);
+        if (!usesManualPaymentUi()) { getController().pushActionableCards(true); }
         updateButtons();
         onStateChanged();
     }

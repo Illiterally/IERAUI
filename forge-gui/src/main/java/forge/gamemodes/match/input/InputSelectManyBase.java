@@ -8,6 +8,7 @@ import forge.game.spellability.SpellAbility;
 import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
 import forge.player.PlayerControllerHuman;
+import forge.util.Localizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -95,7 +96,17 @@ public abstract class InputSelectManyBase<T extends GameEntity> extends InputSyn
         } else {
             showMessage(getMessage());
         }
-        getController().getGui().updateButtons(getOwner(), hasEnoughTargets(), allowCancel, true);
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            getController().getGui().updateButtons(getOwner(), getConfirmLabel(),
+                    Localizer.getInstance().getMessage("lblCancel"), hasEnoughTargets(), allowCancel, true);
+        } else {
+            getController().getGui().updateButtons(getOwner(), hasEnoughTargets(), allowCancel, true);
+        }
+    }
+
+    protected final String getConfirmLabel() {
+        return Localizer.getInstance().getMessage(forge.gui.EnhancedRulesUi.isEnabled()
+                ? (getSelected().isEmpty() && min == 0 ? "lblIERAChooseNone" : "lblIERAConfirmSelection") : "lblOK");
     }
 
     @Override

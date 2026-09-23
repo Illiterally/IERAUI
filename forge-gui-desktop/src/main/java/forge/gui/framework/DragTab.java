@@ -19,6 +19,7 @@ public final class DragTab extends SkinnedLabel implements ILocalRepaint {
     private boolean selected = false;
     private int priority = 10;
     private float flashIntensity = 0f;
+    private Color flashColor = Color.RED;
 
     /**
      * The tab label object in drag layout.
@@ -76,7 +77,12 @@ public final class DragTab extends SkinnedLabel implements ILocalRepaint {
 
     /** Sets the red flash overlay intensity (0..1) and repaints. */
     public void setFlashIntensity(final float intensity) {
+        setFlashIntensity(intensity, Color.RED);
+    }
+
+    public void setFlashIntensity(final float intensity, final Color color) {
         flashIntensity = Math.max(0f, Math.min(1f, intensity));
+        flashColor = color;
         repaintSelf();
     }
 
@@ -102,7 +108,7 @@ public final class DragTab extends SkinnedLabel implements ILocalRepaint {
         }
 
         if (flashIntensity > 0f) {
-            g.setColor(new Color(1f, 0f, 0f, flashIntensity));
+            g.setColor(new Color(flashColor.getRed(), flashColor.getGreen(), flashColor.getBlue(), Math.round(255 * flashIntensity)));
             g.fillRoundRect(0, 0, getWidth() - 1, getHeight() * 2, 6, 6);
         }
 

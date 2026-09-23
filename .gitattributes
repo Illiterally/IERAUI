@@ -1,1 +1,4 @@
 * text=auto
+
+# Unified diffs contain meaningful leading/context whitespace.
+ieraui/*.patch -whitespace

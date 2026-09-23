@@ -744,6 +744,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     @Override
     public boolean confirmAction(final SpellAbility sa, final PlayerActionConfirmMode mode, final String message,
                                  List<String> options, Card cardToShow, Map<String, Object> params) {
+        if (forge.gui.EnhancedRulesUi.isEnabled() && options.isEmpty() && sa != null && sa.hasParam("Optional")) {
+            options = List.of(localizer.getMessage("lblIERAApplyEffect"), localizer.getMessage("lblIERADeclineEffect"));
+        }
         // Another card should be displayed in the prompt on mouse over rather than the SA source
         if (cardToShow != null) {
             tempShowCard(cardToShow);
@@ -824,6 +827,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             else
                 cardView = wrapper.getCardView();
             return this.getGui().confirm(cardView, buildQuestion.toString().replaceAll("\n", " "));
+        }
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            return InputConfirm.confirm(this, wrapper, buildQuestion.toString(), true,
+                    List.of(localizer.getMessage("lblIERAUseAbility"), localizer.getMessage("lblIERADeclineAbility")));
         }
         return InputConfirm.confirm(this, wrapper, buildQuestion.toString());
     }

@@ -1,110 +1,50 @@
-# ⚔️  Forge: The Magic: The Gathering Rules Engine
+# Illiterally's Enhanced Rules Analysis UI (IERAUI)
 
-Join the **Forge community** on [Discord](https://discord.gg/HcPJNyD66a)!
+**A UI Addon for Forge — an Illiterally Custom.**
 
-[![Test build](https://github.com/Card-Forge/forge/actions/workflows/test-build.yaml/badge.svg)](https://github.com/Card-Forge/forge/actions/workflows/test-build.yaml)
+I made this because I was enjoying Forge and kept getting lost in the interface. I would resolve an upkeep trigger, click the same button again, and miss my main phase. An ability would be available and I would overlook it. I knew what I wanted to try, but finding the right interaction kept getting in the way.
 
----
+IERAUI is my attempt to make that part easier. It puts clearer action words, timing, resources, and feedback around Forge's existing rules simulation. The aim is to help newer users get to experimenting sooner and understand what happened when they do.
 
-## ✨ Introduction
+[Download 0.1.12](https://github.com/Illiterally/IERAUI/releases/tag/v0.1.12) · [Setup guide](ieraui/docs/SETUP.md) · [What changes](ieraui/docs/FEATURES.md) · [Build from source](ieraui/docs/BUILD.md)
 
-**Forge** is a dynamic and open-source **Rules Engine** tailored for **Magic: The Gathering** enthusiasts. Developed by a community of passionate programmers, Forge allows players to explore the rich universe of MTG through a flexible, engaging platform. 
+## Built on Forge
 
-**Note:** Forge operates independently and is not affiliated with Wizards of the Coast.
+[Forge](https://github.com/Card-Forge/forge) supplies the rules engine, card implementation, simulation, AI, and deck tools. Its contributors have done an enormous amount of work. IERAUI adds a different desktop UI flow on top of that foundation.
 
----
+This is an independent addon. It isn't an official Forge release or an endorsement by Forge's maintainers or Wizards of the Coast. The full Forge source and its history are retained in this fork; the [original README](ieraui/UPSTREAM-README.md) is preserved too.
 
-## 🌟 Key Features
+## What you get
 
-- **🌐 Cross-Platform Support:** Play on **Windows, Mac, Linux,** and **Android**.
-- **🔧 Extensible Architecture:** Built in **Java**, Forge encourages developers to contribute by adding features and cards.
-- **🎮 Versatile Gameplay:** Dive into single-player modes or challenge opponents online!
+- Action labels such as **Resolve**, **Confirm blocks**, and **Combat**, with a brief input guard around main-phase transitions.
+- A highlighted active-turn portrait and a horizontal phase timeline.
+- A compact hand bar for zones, mana, and life, with overflow in **More**.
+- **Tap Mana** for choosing sources yourself, plus a small optional **Auto** button.
+- A draggable prompt beside the card you're using.
+- More readable current power/toughness, selection cues, and available-action outlines.
+- Brief signed changes beside resource totals, Stack arrival cues, and keyword reminders.
+- Safer layout saving and recovery, plus slower tooltips that stay off the main action button.
 
----
+The cues explain where you can interact. Decisions stay with you. A blue outline is not a guarantee that every ability on that card is affordable; [the feature guide](ieraui/docs/FEATURES.md) explains the current limits.
 
-## 🛠️ Installation Guide
+## Try it
 
-### 📥 Desktop Installation
-1. **Latest Releases:** Download the latest version [here](https://github.com/Card-Forge/forge/releases/latest).
-2. **Snapshot Build:** For the latest development version, grab the `forge-gui-desktop` tarball from our [Snapshot Build](https://github.com/Card-Forge/forge/releases/tag/daily-snapshots).
-   - **Tip:** Extract to a new folder to prevent version conflicts.
-3. **User Data Management:** Previous players’ data is preserved during upgrades.
-4. **Java Requirement:** Ensure you have **Java 17 or later** installed.
+The first public package targets **Forge Desktop 2.0.14 on Windows**, using **Java 17 or later**. Local testing used Java 21. New UI text is currently in English.
 
-### 📱 Android Installation
-- _(Note: **Android 11** is the minimum requirement with at least **6GB RAM** to run smoothly. You need to enable **"Install unknown apps"** for Forge to initialize and update itself)_
-- Download the **APK** from the [Snapshot Build](https://github.com/Card-Forge/forge/releases/tag/daily-snapshots). On the first launch, Forge will automatically download all necessary assets.
+Download Forge 2.0.14 from its official release, extract it into a fresh folder, then extract the IERAUI addon ZIP into that same folder. Launch **Play IERAUI.cmd**. The [setup guide](ieraui/docs/SETUP.md) walks through the files, Java, and importing a deck.
 
-### 📱 iOS Installation (early stage)
-- Build the **IPA** according to Wiki
-- No jailbreak needed, only developer mode
-- Connect your device to a PC to self-sign and upload the app file, multiple tools exist e.g. [Sideloadly](https://sideloadly.io)
+The addon download contains the changed Forge classes, English UI text, a launcher, and documentation. Get Forge and its resources from Forge's own release. No personal decks, saved layouts, card-image cache, or Java runtime are included in this download.
 
----
+## Still rough
 
-## 🎮 Modes of Play
+This is an early release built through actual use, and some of the most useful ideas are still ahead: explanations for cost increases and restricted mana, reliable potential-mana/MAX-X displays, conditional combat forecasts, and larger floating feedback. Those are [plans](ieraui/docs/ROADMAP.md), not features of this download.
 
-Forge offers various exciting gameplay options:
+If something is unclear, an [issue here](https://github.com/Illiterally/IERAUI/issues) with the action you attempted and the version you used would help. Please report addon problems here first so Forge's maintainers don't inherit support for my changes.
 
-### 🌍 Adventure Mode
-Embark on a thrilling single-player journey where you can:
-- Explore an overworld map.
-- Challenge diverse AI opponents.
-- Collect cards and items to boost your abilities.
+## Source, credit, and contributions
 
-<img width="1282" height="752" alt="Shandalar World" src="https://github.com/user-attachments/assets/9af31471-d688-442f-9418-9807d8635b72" />
+Forge code and these changes are distributed under [GPL-3.0-or-later](LICENSE). Existing copyright notices remain in place. The release links to its exact corresponding source and [build instructions](ieraui/docs/BUILD.md). Magic artwork, names, and other third-party material have their own rights; the code license doesn't transfer those rights.
 
-### 🔍 Quest Modes
-Engage in focused gameplay without the overworld exploration—perfect for quick sessions!
+I used OpenAI Codex to help implement and check this addon. That assistance is disclosed here and will be disclosed in any contribution offered upstream, as Forge requests in its [contribution guidance](CONTRIBUTING.md).
 
-<img width="1282" height="752" alt="Quest Duels" src="https://github.com/user-attachments/assets/b9613b1c-e8c3-4320-8044-6922c519aad4" />
-
-### 🤖 AI Formats
-Test your skills against AI in multiple formats:
-- **Sealed**
-- **Draft**
-- **Commander**
-- **Cube**
-
-For comprehensive gameplay instructions, visit our [User Guide](https://github.com/Card-Forge/forge/wiki/User-Guide).
-
-<img width="1282" height="752" alt="Sealed" src="https://github.com/user-attachments/assets/ae603dbd-4421-4753-a333-87cb0a28d772" />
-
----
-
-## 💬 Support & Community
-
-Need help? Join our vibrant Discord community! 
-- 📜 Read the **#rules** and explore the **FAQ**.
-- ❓ Ask your questions in the **#help** channel for assistance.
-
----
-
-## 🤝 Contributing to Forge
-
-We love community contributions! Interested in helping? Check out our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get started.
-
----
-
-## ℹ️ About Forge
-
-Forge aims to deliver an immersive and customizable Magic: The Gathering experience for fans around the world. 
-
-### 📊 Repository Statistics
-
-| Metric         | Count                                                       |
-|----------------|-------------------------------------------------------------|
-| **⭐ Stars:**   | [![GitHub stars](https://img.shields.io/github/stars/Card-Forge/forge?style=flat-square)](https://github.com/Card-Forge/forge/stargazers) |
-| **🍴 Forks:**   | [![GitHub forks](https://img.shields.io/github/forks/Card-Forge/forge?style=flat-square)](https://github.com/Card-Forge/forge/network) |
-| **👥 Contributors:** | [![GitHub contributors](https://img.shields.io/github/contributors/Card-Forge/forge?style=flat-square)](https://github.com/Card-Forge/forge/graphs/contributors) |
-
----
-
-**📄 License:** [GPL-3.0](LICENSE)
-<div align="center" style="display: flex; align-items: center; justify-content: center;">
-    <div style="margin-left: auto;">
-        <a href="#top">
-            <img src="https://img.shields.io/badge/Back%20to%20Top-000000?style=for-the-badge&logo=github&logoColor=white" alt="Back to Top">
-        </a>
-    </div>
-</div>
+Small fixes and clear reports are welcome. See [contributing to IERAUI](ieraui/docs/CONTRIBUTING.md). If Forge's maintainers find individual changes useful, I'd be glad to help separate them into manageable patches.

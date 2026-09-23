@@ -17,6 +17,7 @@
  */
 package forge.view.arcane;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -73,6 +74,8 @@ import forge.toolbox.FSkin.SkinnedPanel;
 import forge.toolbox.IDisposable;
 import forge.util.CardTranslation;
 import forge.view.arcane.util.OutlinedLabel;
+import forge.view.arcane.util.AbilityIconLayout;
+import forge.view.arcane.util.CardAbilityHints;
 
 /**
  * <p>
@@ -126,6 +129,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
     private int cardXOffset, cardYOffset, cardWidth, cardHeight;
     private boolean isSelected;
     private boolean hasFlash;
+    private List<AbilityIconLayout.Slot> abilitySlots = List.of();
     private String zoneBannerText;
     private Color zoneBannerColor;
     private CachedCardImage cachedImage;
@@ -322,6 +326,28 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         final int cornerSize = noBorderPref && !cardImgHasAlpha ? 0 : Math.max(4, Math.round(cardWidth * CardPanel.ROUNDED_CORNER_SIZE));
         final int offset = isTapped() && (!noBorderPref || cardImgHasAlpha) ? 1 : 0;
 
+        if (isHandChoice()) {
+            final Color cue = matchUI.isHighlighted(card) ? new Color(86, 222, 151) : new Color(255, 193, 70);
+            for (int layer = 3; layer >= 1; layer--) {
+                final int n = layer + 1;
+                g2d.setColor(new Color(cue.getRed(), cue.getGreen(), cue.getBlue(), layer == 1 ? 255 : 90));
+                g2d.fillRoundRect(cardXOffset - n, cardYOffset - n + offset,
+                        cardWidth + 2 * n, cardHeight + 2 * n, cornerSize + n, cornerSize + n);
+            }
+        }
+
+        if (forge.gui.EnhancedRulesUi.isEnabled() && getCard() != null && matchUI.mayView(getCard())
+                && isPreferenceEnabled(FPref.UI_SHOW_ACTIONABLE_HIGHLIGHTS)
+                && matchUI.isWeaklySelectable(getCard()) && !matchUI.isSelectable(getCard())) {
+            final Color cue = parseActionableHighlightColor();
+            for (int layer = 3; layer >= 1; layer--) {
+                final int n = layer + 1;
+                g2d.setColor(new Color(cue.getRed(), cue.getGreen(), cue.getBlue(), layer == 1 ? 235 : 65));
+                g2d.fillRoundRect(cardXOffset - n, cardYOffset - n + offset,
+                        cardWidth + 2 * n, cardHeight + 2 * n, cornerSize + n, cornerSize + n);
+            }
+        }
+
         // Yellow glow for cards that Auto would tap to pay (weak-selectable strength >= 2)
         if (isPreferenceEnabled(FPref.UI_SHOW_AUTOTAP_PREVIEW) && matchUI.getWeakSelectableStrength(getCard()) >= 2) {
             for (int layer = 2; layer >= 1; layer--) {
@@ -333,7 +359,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
 
         // Magenta outline for when card is chosen
         if (matchUI.isHighlighted(getCard())) {
-            g2d.setColor(Color.magenta);
+            g2d.setColor(isHandChoice() ? new Color(86, 222, 151) : Color.magenta);
             final int n2 = Math.max(1, Math.round(2 * cardWidth * CardPanel.SELECTED_BORDER_SIZE));
             g2d.fillRoundRect(cardXOffset - n2, (cardYOffset - n2) + offset, cardWidth + (n2 * 2), cardHeight + (n2 * 2), cornerSize + n2, cornerSize + n2);
         }
@@ -343,7 +369,10 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
             g2d.setColor(Color.green);
             final int n = Math.max(1, Math.round(cardWidth * CardPanel.SELECTED_BORDER_SIZE));
             g2d.fillRoundRect(cardXOffset - n, (cardYOffset - n) + offset, cardWidth + (n * 2), cardHeight + (n * 2), cornerSize + n , cornerSize + n);
-        } else if (hasFlash && (getCard() != null && matchUI.mayView(getCard()))) {
+        // Flash describes timing, not affordability. The enhanced UI keeps its
+        // lightning icon and reserves the blue frame for actionable cards.
+        } else if (!forge.gui.EnhancedRulesUi.isEnabled() && hasFlash
+                && (getCard() != null && matchUI.mayView(getCard()))) {
             g2d.setColor(Color.cyan);
             final int n = Math.max(1, Math.round(cardWidth * CardPanel.SELECTED_BORDER_SIZE));
             g2d.fillRoundRect(cardXOffset - n, (cardYOffset - n) + offset, cardWidth + (n * 2), cardHeight + (n * 2), cornerSize + n , cornerSize + n);
@@ -394,7 +423,9 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         // panel and would cover an inset, so draw it as an outset (like the frames above).
         Color innerBorder = null;
         if (matchUI.isSelectable(getCard())) {
-            innerBorder = Color.WHITE;
+            innerBorder = isHandChoice()
+                    ? (matchUI.isHighlighted(card) ? new Color(86, 222, 151) : new Color(255, 193, 70))
+                    : Color.WHITE;
         } else if (isPreferenceEnabled(FPref.UI_SHOW_ACTIONABLE_HIGHLIGHTS) && matchUI.isWeaklySelectable(getCard())) {
             innerBorder = parseActionableHighlightColor();
         }
@@ -407,6 +438,38 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
                 final int ins = 1;
                 g2d.fillRoundRect(cardXOffset + ins, cardYOffset + ins, cardWidth - ins * 2, cardHeight - ins * 2, cornerSize - ins, cornerSize - ins);
             }
+        }
+    }
+
+    private boolean isHandChoice() {
+        return forge.gui.EnhancedRulesUi.isEnabled() && card != null && matchUI.mayView(card)
+                && ZoneType.Hand.equals(card.getZone()) && matchUI.isSelecting() && matchUI.isSelectable(card);
+    }
+
+    private void drawHandSelectionBadge(final Graphics g) {
+        final Graphics2D badge = (Graphics2D) g.create();
+        try {
+            badge.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            badge.setFont(new Font(Font.DIALOG, Font.BOLD, Math.max(11, Math.min(16, cardWidth / 10))));
+            final String label = forge.util.Localizer.getInstance().getMessage("lblIERASelected");
+            final FontMetrics metrics = badge.getFontMetrics();
+            final int h = metrics.getHeight() + 8;
+            final int w = Math.min(cardWidth - 8, metrics.stringWidth(label) + h + 10);
+            final int x = cardXOffset + (cardWidth - w) / 2;
+            final int y = cardYOffset + cardHeight * 2 / 3;
+            badge.setColor(new Color(10, 43, 30, 245));
+            badge.fillRoundRect(x, y, w, h, 10, 10);
+            badge.setColor(new Color(86, 222, 151));
+            badge.drawRoundRect(x, y, w, h, 10, 10);
+            badge.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            badge.drawLine(x + 6, y + h / 2, x + 11, y + h / 2 + 5);
+            badge.drawLine(x + 11, y + h / 2 + 5, x + 20, y + h / 2 - 5);
+            if (metrics.stringWidth(label) + h + 10 <= w) {
+                badge.setColor(Color.WHITE);
+                badge.drawString(label, x + h, y + 4 + metrics.getAscent());
+            }
+        } finally {
+            badge.dispose();
         }
     }
 
@@ -464,6 +527,9 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         if (canShow) {
             drawFoilEffect(g, card, cardXOffset, cardYOffset,
                     cardWidth, cardHeight, Math.round(cardWidth * BLACK_BORDER_SIZE));
+        }
+        if (isHandChoice() && matchUI.isHighlighted(card)) {
+            drawHandSelectionBadge(g);
         }
 
         boolean nonselectable = matchUI.isSelecting() && !matchUI.isSelectable(getCard());
@@ -543,6 +609,26 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
     }
 
     private void displayPTOverlay(final boolean isVisible, final Dimension imgSize, final Point imgPos) {
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            if (isVisible) {
+                int fontSize = Math.min(22, Math.max(16, imgSize.width / 7));
+                ptText.setFont(new Font(Font.DIALOG, Font.BOLD, fontSize));
+                while (fontSize > 10 && ptText.getPreferredSize().width > imgSize.width - 4) {
+                    ptText.setFont(new Font(Font.DIALOG, Font.BOLD, --fontSize));
+                }
+                ptText.setOpaque(true);
+                ptText.setBackground(new Color(10, 15, 22, 240));
+                final Dimension size = ptText.getPreferredSize();
+                ptText.setBounds(imgPos.x + Math.max(0, imgSize.width - size.width - 2),
+                        imgPos.y + imgSize.height - size.height - 2, size.width, size.height);
+                final Dimension damage = damageText.getPreferredSize();
+                damageText.setBounds(imgPos.x + Math.max(0, imgSize.width - damage.width - 2),
+                        ptText.getY() - damage.height, damage.width, damage.height);
+            }
+            ptText.setVisible(isVisible);
+            damageText.setVisible(isVisible);
+            return;
+        }
         if (isVisible) {
             final int rightLine = Math.round(imgSize.width * (412f / 480)) + 3;
             // Power
@@ -723,7 +809,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
             CardFaceSymbols.drawSymbol("phasing", g, stateXSymbols, ySymbols);
         }
 
-        if (matchUI.isHighlighted(card)) {
+        if (matchUI.isHighlighted(card) && !isHandChoice()) {
             CardFaceSymbols.drawSymbol("sacrifice", g, (cardXOffset + (cardWidth / 2)) - 20,
                     (cardYOffset + (cardHeight / 2)) - 20);
         }
@@ -735,7 +821,41 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         int abiSpace = (cardWidth / 7);
         int abiY = cardWidth < 200 ? cardYOffset + 25 : cardYOffset + 50;
         hasFlash = false;
+        abilitySlots = List.of();
         if (!showAbilityIcons()) {
+            return;
+        }
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            if (canShow && !card.isFaceDown()) {
+                final List<FSkinProp> icons = new ArrayList<>(FSkinProp.iconsFromCardState(card.getCurrentState()));
+                hasFlash = icons.contains(FSkinProp.IMG_ABILITY_FLASH);
+                final int statsTop = ptText.isVisible() ? ptText.getY() - damageText.getHeight() : cardYOffset + cardHeight;
+                abilitySlots = AbilityIconLayout.arrange(icons, cardXOffset, cardYOffset, cardWidth, cardHeight, statsTop);
+                for (final AbilityIconLayout.Slot slot : abilitySlots) {
+                    final Rectangle area = slot.bounds();
+                    if (slot.isOverflow()) {
+                        final Graphics2D badge = (Graphics2D) g.create();
+                        try {
+                            badge.setColor(new Color(17, 30, 40, 245));
+                            badge.fillRoundRect(area.x, area.y, area.width, area.height, 4, 4);
+                            badge.setColor(new Color(139, 215, 231));
+                            badge.drawRoundRect(area.x, area.y, area.width - 1, area.height - 1, 4, 4);
+                            final String number = "+" + slot.abilities().size();
+                            int fontSize = Math.max(9, area.height - 3);
+                            badge.setFont(new Font(Font.DIALOG, Font.BOLD, fontSize));
+                            while (fontSize > 7 && badge.getFontMetrics().stringWidth(number) > area.width - 2) {
+                                badge.setFont(badge.getFont().deriveFont((float) --fontSize));
+                            }
+                            final FontMetrics fm = badge.getFontMetrics();
+                            badge.drawString(number, area.x + (area.width - fm.stringWidth(number)) / 2,
+                                    area.y + (area.height - fm.getHeight()) / 2 + fm.getAscent());
+                        } finally { badge.dispose(); }
+                    } else {
+                        FSkin.drawImage(g, FSkin.getImage(slot.abilities().get(0)), area.x, area.y, area.width, area.height);
+                    }
+                }
+            }
+            if (ghost) { drawGhostOverlay(g); }
             return;
         }
         if (ZoneType.Battlefield.equals(card.getZone())) {
@@ -765,6 +885,27 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         final int cornerSize = Math.max(4, Math.round(cardWidth * CardPanel.ROUNDED_CORNER_SIZE));
         g2d.setColor(GHOST_TINT);
         g2d.fillRoundRect(cardXOffset, cardYOffset, cardWidth, cardHeight, cornerSize, cornerSize);
+    }
+
+    /** Container-relative hit testing includes the same rotation used to paint tapped cards. */
+    public String getAbilityToolTip(final int mouseX, final int mouseY) {
+        if (!forge.gui.EnhancedRulesUi.isEnabled() || card == null || !matchUI.mayView(card)
+                || card.isFaceDown() || !showAbilityIcons()) { return null; }
+        double x = mouseX - getX();
+        double y = mouseY - getY();
+        if (tappedAngle > 0) {
+            final double pivotX = cardXOffset + cardWidth / 2.0;
+            final double pivotY = cardYOffset + cardHeight - cardWidth / 2.0;
+            final double dx = x - pivotX, dy = y - pivotY;
+            x = Math.cos(-tappedAngle) * dx - Math.sin(-tappedAngle) * dy + pivotX;
+            y = Math.sin(-tappedAngle) * dx + Math.cos(-tappedAngle) * dy + pivotY;
+        }
+        for (final AbilityIconLayout.Slot slot : abilitySlots) {
+            if (slot.bounds().contains(x, y)) {
+                return CardAbilityHints.tooltip(card.getCurrentState(), slot.abilities(), true);
+            }
+        }
+        return null;
     }
 
     private void drawZoneBanner(final Graphics g) {

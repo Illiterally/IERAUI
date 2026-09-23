@@ -197,7 +197,7 @@ public class InputSelectEntitiesFromList<T extends GameEntity> extends InputSele
      */
     private void updateMassSelectButton() {
         String selectButtonLabel = massSelectMode.next().getTranslatedName();
-        getController().getGui().updateButtons(getOwner(), Localizer.getInstance().getMessage("lblOK"),
+        getController().getGui().updateButtons(getOwner(), getConfirmLabel(),
                 selectButtonLabel, hasEnoughTargets(), allowCancel, true);
     }
 
@@ -237,6 +237,9 @@ public class InputSelectEntitiesFromList<T extends GameEntity> extends InputSele
                     selected.add(c);
                     onSelectStateChanged(c, true);
                 }
+            }
+            if (forge.gui.EnhancedRulesUi.isEnabled()) {
+                updateMassSelectButton();
             }
         }
     }

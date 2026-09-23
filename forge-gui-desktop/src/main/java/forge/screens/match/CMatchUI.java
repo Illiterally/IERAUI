@@ -820,6 +820,16 @@ public final class CMatchUI
         lastClickedCardPanel = panel;
     }
 
+    /** Find an already visible anchor without changing tabs or opening another zone. */
+    public CardPanel findVisibleCardPanel(final CardView card) {
+        if (card == null || card.isFaceDown() || !mayView(card)) { return null; }
+        for (final CardPanel panel : getVisibleCardPanels()) {
+            if (panel.isShowing() && panel.getCard() != null && panel.getCard().getId() == card.getId()
+                    && !panel.getVisibleRect().isEmpty()) { return panel; }
+        }
+        return null;
+    }
+
     /**
      * Find the card panel belonging to a card, bringing up the corresponding
      * window or tab if necessary.
@@ -880,6 +890,7 @@ public final class CMatchUI
             // and then using the keyboard to try to select it
             btn1.setEnabled(actualEnable1);
             btn2.setEnabled(actualEnable2);
+            cPrompt.updateDecisionOwner(owner, actualEnable1 || actualEnable2);
             btn1.setFocusable(actualEnable1 && actualFocus1);
             btn2.setFocusable(actualEnable2 && !actualFocus1);
             // ensure we don't steal focus from an overlay
@@ -908,6 +919,8 @@ public final class CMatchUI
 
     @Override
     public void updatePhase(boolean saveState) {
+        cPrompt.updatePhaseContext();
+        for (final VField field : view.getFieldViews()) { field.updateActiveTurn(); }
         final PlayerView p = getGameView().getPlayerTurn();
         final PhaseType ph = getGameView().getPhase();
         // this should never happen, but I've seen it periodically... so, need to get to the bottom of it
@@ -924,6 +937,8 @@ public final class CMatchUI
             lbl.setActive(true);
         }
 
+        for (final VHand hand : getHandViews()) { hand.updateTimeline(); }
+
         if (openAbilityMenu != null) { //ensure ability menu can't remain open between phases
             openAbilityMenu.setVisible(false);
         }
@@ -934,6 +949,9 @@ public final class CMatchUI
         final VField nextField = getFieldViewFor(player);
         SDisplayUtil.showTab(nextField);
         cPrompt.updateText();
+        cPrompt.updatePhaseContext();
+        for (final VField field : view.getFieldViews()) { field.updateActiveTurn(); }
+        for (final VHand hand : getHandViews()) { hand.updateTimeline(); }
         repaintCardOverlays();
     }
 
@@ -1294,6 +1312,7 @@ public final class CMatchUI
         super.afterGameEnd();
         Singletons.getView().getLpnDocument().remove(targetingOverlay.getPanel());
         FThreads.invokeInEdtNowOrLater(() -> {
+            cPrompt.disposeCardPrompt();
             Singletons.getView().getNavigationBar().closeTab(screen);
             LinkHandler.clearWeakReferencesNow();
         });

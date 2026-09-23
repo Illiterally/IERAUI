@@ -47,6 +47,7 @@ import forge.toolbox.FSkin.SkinImage;
 import forge.toolbox.FSkin.SkinnedPanel;
 import forge.toolbox.special.PhaseIndicator;
 import forge.toolbox.special.PlayerDetailsPanel;
+import forge.toolbox.special.PlayerStatusBar;
 import forge.util.Localizer;
 import forge.view.arcane.PlayArea;
 import net.miginfocom.swing.MigLayout;
@@ -71,6 +72,7 @@ public class VField implements IVDoc<CField> {
     private final PlayerView player;
     private boolean commanderBracketTooltipCalculated = false;
     private String commanderBracketTooltipLine;
+    private boolean activeTurn;
 
     // Top-level containers
     private final FScrollPane scroller = new FScrollPane(false);
@@ -78,6 +80,7 @@ public class VField implements IVDoc<CField> {
     private final SkinnedPanel avatarArea = new SkinnedPanel();
 
     private final PlayerDetailsPanel detailsPanel;
+    private final PlayerStatusBar statusBar;
 
     // Avatar area
     private final FLabel lblAvatar     = new FLabel.Builder().fontAlign(SwingConstants.CENTER).iconScaleFactor(1.0f).build();
@@ -112,6 +115,21 @@ public class VField implements IVDoc<CField> {
         else { tab.setText(Localizer.getInstance().getMessage("lblNoPlayerForEDocID", docID.toString())); }
 
         detailsPanel = new PlayerDetailsPanel(player, CMatchUI.FLOATING_ZONE_TYPES);
+        statusBar = forge.gui.EnhancedRulesUi.isEnabled() && player != null
+                ? new PlayerStatusBar(player, CMatchUI.FLOATING_ZONE_TYPES, FSkin.getFont(13).getBaseFont(),
+                        key -> Localizer.getInstance().getMessage(key),
+                        zone -> org.apache.commons.text.WordUtils.capitalize(zone.getTranslatedName()),
+                        color -> FSkin.getImage(FSkinProp.MANA_IMG.get(color)).resize(16, 16).getIcon(),
+                        zone -> FSkin.getImage(PlayerDetailsPanel.iconFromZone(zone)).resize(16, 16).getIcon()) : null;
+        if (statusBar != null) {
+            statusBar.setSummaryIcons(FSkin.getImage(FSkinProp.ICO_QUEST_LIFE).resize(16, 16).getIcon(),
+                    FSkin.getImage(FSkinProp.IMG_STAR_OUTLINE).resize(16, 16).getIcon());
+            statusBar.addHierarchyListener(e -> {
+                if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0) {
+                    javax.swing.SwingUtilities.invokeLater(this::refreshResourceLayout);
+                }
+            });
+        }
 
         // TODO player is hard-coded into tabletop...should be dynamic
         // (haven't looked into it too deeply). Doublestrike 12-04-12
@@ -163,12 +181,32 @@ public class VField implements IVDoc<CField> {
     @Override
     public void populate() {
         final JPanel pnl = parentCell.getBody();
+        if (statusBar != null && statusBar.isShowing()) {
+            pnl.setLayout(new MigLayout("insets 0, gap 0, fill", "[112!][grow,fill]", "[grow,fill]"));
+            pnl.add(avatarArea, "w 112!, h 0:125:125, aligny top");
+            pnl.add(scroller, "grow, push, w 0:100%, h 0:100%");
+            return;
+        }
         pnl.setLayout(new MigLayout("insets 0, gap 0"));
 
         pnl.add(avatarArea, "w 10%!, h 35%!");
         pnl.add(phaseIndicator, "w 5%!, h 100%!, span 1 2");
         pnl.add(scroller, "w 85%!, h 100%!, span 1 2, wrap");
         pnl.add(detailsPanel, "w 10%!, h 64%!, gapleft 1px");
+    }
+
+    private void refreshResourceLayout() {
+        if (parentCell == null || parentCell.getSelected() != this) { return; }
+        final JPanel body = parentCell.getBody();
+        body.removeAll();
+        populate();
+        body.revalidate();
+        body.repaint();
+    }
+
+    public java.awt.Component getLibraryAnimationAnchor() {
+        return statusBar != null && statusBar.isShowing()
+                ? statusBar.getZoneAnchor(ZoneType.Library) : detailsPanel.getLblLibrary();
     }
 
     @Override
@@ -212,6 +250,10 @@ public class VField implements IVDoc<CField> {
         return detailsPanel;
     }
 
+    public PlayerStatusBar getStatusBar() {
+        return statusBar;
+    }
+
     private boolean isHighlighted() {
         return control.getMatchUI().isHighlighted(player);
     }
@@ -223,9 +265,11 @@ public class VField implements IVDoc<CField> {
 
     public void updateManaPool() {
         detailsPanel.updateManaPool();
+        if (statusBar != null) { statusBar.updateStatus(); }
     }
     public void updateZones() {
         detailsPanel.updateZones();
+        if (statusBar != null) { statusBar.updateStatus(); }
     }
 
     public void updateTabLabel() {
@@ -234,11 +278,23 @@ public class VField implements IVDoc<CField> {
         }
         final int delta = tabDiff.update(tabletop.getCardPanels().size(), tab);
         String label = Localizer.getInstance().getMessage("lblPlayField", player.getName());
+        if (activeTurn) { label += " · " + Localizer.getInstance().getMessage("lblIERATurnBadge"); }
         if (delta != 0) {
             label += " (" + delta + " new)";
         }
         tab.setText(label);
         tab.setToolTipText(label);
+    }
+
+    public void updateActiveTurn() {
+        if (!forge.gui.EnhancedRulesUi.isEnabled()) { return; }
+        final forge.game.GameView game = matchUI.getGameView();
+        activeTurn = player != null && game != null && !game.isGameOver() && player.equals(game.getPlayerTurn());
+        lblAvatar.setBorder(activeTurn
+                ? new LineBorder(FSkin.getColor(FSkin.Colors.CLR_PHASE_ACTIVE_ENABLED).getColor(), 3)
+                : javax.swing.BorderFactory.createEmptyBorder(3, 3, 3, 3));
+        updateTabLabel();
+        lblAvatar.repaint();
     }
 
     private void addLblTicket() {
@@ -336,6 +392,7 @@ public class VField implements IVDoc<CField> {
     }
 
     public void updateDetails() {
+        if (statusBar != null) { statusBar.updateStatus(); }
         // Update life total
         final int life = player.getLife();
         lblLife.setText(String.valueOf(life));

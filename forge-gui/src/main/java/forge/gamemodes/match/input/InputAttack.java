@@ -87,7 +87,14 @@ public class InputAttack extends InputSyncronizedBase {
     private void updatePrompt() {
         Localizer localizer = Localizer.getInstance();
         String alphaLabel = canCallBackAttackers() ? localizer.getMessage("lblCallBack") : localizer.getMessage("lblAlphaStrike");
-        getController().getGui().updateButtons(getOwner(), localizer.getMessage("lblOK"), alphaLabel, true, true, true);
+        String confirmLabel = localizer.getMessage("lblOK");
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            confirmLabel = canCallBackAttackers()
+                    ? localizer.getMessage("lblIERAConfirmAttackers", combat.getAttackers().size())
+                    : localizer.getMessage("lblIERANoAttacks");
+            alphaLabel = localizer.getMessage(canCallBackAttackers() ? "lblIERAClearAttackers" : "lblIERASelectAttackers");
+        }
+        getController().getGui().updateButtons(getOwner(), confirmLabel, alphaLabel, true, true, true);
     }
 
     private void disablePrompt() {

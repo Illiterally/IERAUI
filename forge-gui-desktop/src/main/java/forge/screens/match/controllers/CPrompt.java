@@ -21,6 +21,8 @@ import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Window;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
@@ -33,6 +35,9 @@ import javax.swing.JButton;
 
 import forge.game.GameView;
 import forge.game.card.CardView;
+import forge.gamemodes.match.input.InputPayMana;
+import forge.gamemodes.match.input.InputPassPriority;
+import forge.player.PlayerControllerHuman;
 import forge.gui.FThreads;
 import forge.gui.framework.ICDoc;
 import forge.gui.framework.SDisplayUtil;
@@ -50,9 +55,27 @@ import forge.toolbox.FSkin;
 public class CPrompt implements ICDoc {
     private final CMatchUI matchUI;
     private final VPrompt view;
+    private final PhaseInputGuard phaseGuard = new PhaseInputGuard();
+    private final CCardActionPrompt cardPrompt;
+    private boolean previousStackNonEmpty;
+    private InputPayMana manaPayment;
     public CPrompt(final CMatchUI matchUI) {
         this.matchUI = matchUI;
         this.view = new VPrompt(this);
+        this.cardPrompt = forge.gui.EnhancedRulesUi.isEnabled() ? new CCardActionPrompt(this) : null;
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            final KeyAdapter keys = new KeyAdapter() {
+                @Override public void keyPressed(final KeyEvent e) {
+                    if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        phaseGuard.keyPressed(e.getKeyCode());
+                    }
+                }
+                @Override public void keyReleased(final KeyEvent e) { phaseGuard.keyReleased(e.getKeyCode()); }
+            };
+            view.getBtnOK().addKeyListener(keys);
+            view.getBtnCancel().addKeyListener(keys);
+            view.getBtnManaAuto().addKeyListener(keys);
+        }
     }
 
     public final CMatchUI getMatchUI() {
@@ -64,8 +87,63 @@ public class CPrompt implements ICDoc {
 
     private Component lastFocusedButton = null;
 
-    private final ActionListener actCancel = evt -> selectButtonCancel();
-    private final ActionListener actOK = evt -> selectButtonOk();
+    private final ActionListener actCancel = evt -> submitAction(false, evt.getWhen());
+    private final ActionListener actOK = evt -> submitAction(true, evt.getWhen());
+    private final ActionListener actManaAuto = evt -> submitManaAuto(evt.getWhen());
+
+    private InputPayMana currentManaPayment() {
+        if (matchUI.getGameController() instanceof PlayerControllerHuman human
+                && !human.macros().isReplaying()
+                && human.getInputQueue().getInput() instanceof InputPayMana payment
+                && payment.usesManualPaymentUi()) { return payment; }
+        return null;
+    }
+
+    private void updateManaPayment() {
+        final InputPayMana next = currentManaPayment();
+        if (manaPayment != next) {
+            view.getBtnManaAuto().getModel().setArmed(false);
+            view.getBtnManaAuto().getModel().setPressed(false);
+        }
+        manaPayment = next;
+        view.getBtnManaAuto().setVisible(manaPayment != null);
+        view.getBtnManaAuto().setEnabled(manaPayment != null && manaPayment.canAutoPayMana());
+        if (view.getBtnManaAuto().getParent() != null) {
+            view.getBtnManaAuto().getParent().revalidate();
+            view.getBtnManaAuto().getParent().repaint();
+        }
+    }
+
+    boolean submitManaAuto(final long eventTime) {
+        final InputPayMana current = currentManaPayment();
+        if (matchUI.getGameView() == null || matchUI.getGameView().isGameOver()
+                || !view.getBtnManaAuto().isEnabled() || current == null || current != manaPayment
+                || !current.canAutoPayMana() || !acceptPhaseInput(eventTime)) { return false; }
+        view.getBtnManaAuto().setEnabled(false);
+        if (cardPrompt != null) { cardPrompt.blockButtons(); }
+        current.autoPayMana();
+        return true;
+    }
+
+    /** Both prompt surfaces use the same enabled state, phase guard and controller action. */
+    boolean submitAction(final boolean primary, final long eventTime) {
+        final JButton button = primary ? view.getBtnOK() : view.getBtnCancel();
+        if (!button.isEnabled()) { return false; }
+        if ((primary || forge.util.Localizer.getInstance().getMessage("lblEndTurn").equals(button.getText()))
+                && !acceptPhaseInput(eventTime)) { return false; }
+        if (cardPrompt != null) { cardPrompt.blockButtons(); }
+        if (primary) { selectButtonOk(); } else { selectButtonCancel(); }
+        return true;
+    }
+
+    public void disposeCardPrompt() {
+        if (cardPrompt != null) { cardPrompt.dispose(); }
+    }
+
+    private boolean acceptPhaseInput(final long eventTime) {
+        if (!forge.gui.EnhancedRulesUi.isEnabled()) { return true; }
+        return phaseGuard.accepts(eventTime, System.currentTimeMillis());
+    }
 
     private final WindowAdapter focusOKButtonOnDialogClose = new WindowAdapter() {
         @Override
@@ -97,6 +175,11 @@ public class CPrompt implements ICDoc {
 
     private final FocusListener onFocus = new FocusAdapter() {
         @Override
+        public void focusLost(final FocusEvent e) {
+            phaseGuard.clearKeys();
+        }
+
+        @Override
         public void focusGained(final FocusEvent e) {
             if (null != view.getParentCell() && view == view.getParentCell().getSelected()) {
                 // only record focus changes when we're showing -- otherwise it is due to a tab visibility change
@@ -120,6 +203,7 @@ public class CPrompt implements ICDoc {
     @Override
     public void initialize() {
         _initButton(view.getBtnCancel(), actCancel);
+        _initButton(view.getBtnManaAuto(), actManaAuto);
         _initButton(view.getBtnOK(), actOK);
     }
 
@@ -146,7 +230,65 @@ public class CPrompt implements ICDoc {
 
     public void setMessage(final String s0, final CardView card) {
         view.getTarMessage().setText(FSkin.encodeSymbols(s0, false));
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            String help = null;
+            if (matchUI.getGameController() instanceof PlayerControllerHuman human
+                    && human.getInputQueue().getInput() instanceof InputPassPriority priority) {
+                help = priority.getPriorityHelpText();
+            }
+            final String tooltip = help == null ? null : "<html><body width='300'>"
+                    + help.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+                    + "</body></html>";
+            view.getTarMessage().setToolTipText(tooltip);
+            // Keep the action button clear while the player is resolving or advancing.
+            // Detailed timing help remains available over the prompt text.
+            view.getBtnOK().setToolTipText(null);
+        }
         view.setCardView(card);
+        updatePhaseContext();
+        if (cardPrompt != null) { cardPrompt.setContext(s0, card); }
+    }
+
+    public void updatePhaseContext() {
+        if (!forge.gui.EnhancedRulesUi.isEnabled()) { return; }
+        final GameView game = matchUI.getGameView();
+        final forge.util.Localizer localizer = forge.util.Localizer.getInstance();
+        if (game == null || game.isGameOver() || game.getPhase() == null || game.getPlayerTurn() == null) {
+            view.getLblPhase().setText(localizer.getMessage("lblGameSetup"));
+            view.getLblDecision().setText("");
+            phaseGuard.enter("setup", false, System.currentTimeMillis());
+            phaseGuard.clearKeys();
+            previousStackNonEmpty = false;
+            return;
+        }
+        view.getLblPhase().setText(game.getPhase().nameForUi);
+        view.getLblPhase().setToolTipText(game.getPhase().nameForUi);
+        view.getLblPhase().setForeground(FSkin.getColor(FSkin.Colors.CLR_TEXT));
+        view.getLblPhase().setBackground(FSkin.getColor(FSkin.Colors.CLR_ACTIVE));
+        view.getLblPhase().setOpaque(true);
+        view.getLblDecision().setText(localizer.getMessage("lblIERATurnOwner", game.getPlayerTurn().getName(), game.getTurn()));
+        phaseGuard.enter(game.getId() + ":" + game.getTurn() + ":" + game.getPlayerTurn().getId() + ":" + game.getPhase(),
+                game.getPhase().isMain() && matchUI.isLocalPlayer(game.getPlayerTurn()), System.currentTimeMillis());
+        final boolean stackNonEmpty = game.getStack() != null && !game.getStack().isEmpty();
+        if (previousStackNonEmpty && !stackNonEmpty && game.getPhase().isMain()
+                && matchUI.isLocalPlayer(game.getPlayerTurn())) {
+            phaseGuard.protect(System.currentTimeMillis());
+        }
+        previousStackNonEmpty = stackNonEmpty;
+    }
+
+    public void updateDecisionOwner(final forge.game.player.PlayerView owner, final boolean enabled) {
+        if (!forge.gui.EnhancedRulesUi.isEnabled()) { return; }
+        updateManaPayment();
+        if (cardPrompt != null) { cardPrompt.refresh(); }
+        updatePhaseContext();
+        final GameView game = matchUI.getGameView();
+        if (game == null || game.isGameOver() || game.getPlayerTurn() == null) { return; }
+        final forge.util.Localizer localizer = forge.util.Localizer.getInstance();
+        final String decision = enabled && owner != null
+                ? localizer.getMessage("lblIERADecisionOwner", owner.getName()) : localizer.getMessage("lblIERAWaiting");
+        view.getLblDecision().setText(localizer.getMessage("lblIERATurnAndDecision", game.getPlayerTurn().getName(), decision));
+        view.getLblDecision().setToolTipText(view.getLblDecision().getText());
     }
 
     /**

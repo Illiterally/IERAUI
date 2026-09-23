@@ -128,11 +128,18 @@ public abstract class InputBase implements java.io.Serializable, Input {
     }
 
     protected String getTurnPhasePriorityMessage(final Game game) {
+        return getTurnPhasePriorityMessage(game, false);
+    }
+
+    /** Compact desktop headers already show turn, phase and decision owner. */
+    protected String getTurnPhasePriorityMessage(final Game game, final boolean compact) {
         final PhaseHandler ph = game.getPhaseHandler();
         final StringBuilder sb = new StringBuilder();
         Localizer localizer = Localizer.getInstance();
-        sb.append(localizer.getMessage("lblPriority")).append(": ").append(ph.getPriorityPlayer()).append("\n");
-        sb.append(localizer.getMessage("lblTurn")).append(": ").append(ph.getTurn()).append(" (").append(ph.getPlayerTurn()).append(")");
+        if (!compact) {
+            sb.append(localizer.getMessage("lblPriority")).append(": ").append(ph.getPriorityPlayer()).append("\n");
+            sb.append(localizer.getMessage("lblTurn")).append(": ").append(ph.getTurn()).append(" (").append(ph.getPlayerTurn()).append(")");
+        }
 
         if (!game.isNeitherDayNorNight()) {
             sb.append("  [");
@@ -143,12 +150,17 @@ public abstract class InputBase implements java.io.Serializable, Input {
             sb.append("]");
         }
 
-        sb.append("\n");
-        sb.append(localizer.getMessage("lblPhase")).append(": ").append(ph.getPhase().nameForUi).append("\n");
-        sb.append(localizer.getMessage("lblStack")).append(": ");
+        if (!compact) {
+            sb.append("\n");
+            sb.append(localizer.getMessage("lblPhase")).append(": ").append(ph.getPhase().nameForUi).append("\n");
+            sb.append(localizer.getMessage("lblStack")).append(": ");
+        } else if (!game.getStack().isEmpty()) {
+            if (sb.length() > 0) { sb.append("\n"); }
+            sb.append(localizer.getMessage("lblStack")).append(": ");
+        }
         if (!game.getStack().isEmpty()) {
             sb.append(game.getStack().size()).append(" ").append(localizer.getMessage("lbltoResolve"));
-        } else {
+        } else if (!compact) {
             sb.append(localizer.getMessage("lblEmpty"));
         }
         if (FModel.getPreferences().getPrefBoolean(ForgePreferences.FPref.UI_SHOW_STORM_COUNT_IN_PROMPT)) {
@@ -175,6 +187,6 @@ public abstract class InputBase implements java.io.Serializable, Input {
             }
         }
 
-        return sb.toString();
+        return sb.toString().trim();
     }
 }

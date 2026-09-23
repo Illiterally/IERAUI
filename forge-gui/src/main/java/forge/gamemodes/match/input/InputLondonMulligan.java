@@ -22,8 +22,10 @@ import forge.game.GameEntityView;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
+import forge.game.card.CardView;
 import forge.game.player.Player;
 import forge.game.zone.ZoneType;
+import forge.gui.EnhancedRulesUi;
 import forge.player.PlayerControllerHuman;
 import forge.util.ITriggerEvent;
 import forge.util.Localizer;
@@ -60,6 +62,19 @@ public class InputLondonMulligan extends InputSyncronizedBase {
         game.getView().updateIsMulligan(true);
         int cardsLeft = toReturn - selected.size();
 
+        if (EnhancedRulesUi.isEnabled()) {
+            final List<CardView> choices = new ArrayList<>();
+            for (final Card card : player.getZone(ZoneType.Hand).getCards()) {
+                choices.add(card.getView());
+            }
+            getController().getGui().setSelectables(choices, toReturn, toReturn);
+            getController().getGui().updateButtons(getOwner(),
+                    localizer.getMessage("lblIERAReturnSelected"), localizer.getMessage("lblIERAAutoReturn"),
+                    cardsLeft == 0, cardsLeft != 0, true);
+            showMessage(localizer.getMessage("lblIERALondonChoice", selected.size(), toReturn));
+            return;
+        }
+
         StringBuilder sb = new StringBuilder();
 
         getController().getGui().updateButtons(getOwner(), localizer.getMessage("lblOK"), localizer.getMessage("lblAuto"), cardsLeft == 0, cardsLeft != 0, true);
@@ -72,6 +87,15 @@ public class InputLondonMulligan extends InputSyncronizedBase {
     @Override
     protected final boolean allowAwaitNextInput() {
         return true;
+    }
+
+    @Override
+    protected void onStop() {
+        if (EnhancedRulesUi.isEnabled()) {
+            resetCardHighlights();
+            getController().getGui().clearSelectables();
+        }
+        super.onStop();
     }
 
     /** {@inheritDoc} */
@@ -131,6 +155,9 @@ public class InputLondonMulligan extends InputSyncronizedBase {
 
     @Override
     public String getActivateAction(final Card card) {
+        if (EnhancedRulesUi.isEnabled() && !cardSelectLocked && player.getZone(ZoneType.Hand).contains(card)) {
+            return selected.contains(card) ? "unselect card" : "select card";
+        }
         return null;
     }
 

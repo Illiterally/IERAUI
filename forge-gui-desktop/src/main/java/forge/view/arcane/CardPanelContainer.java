@@ -70,6 +70,14 @@ public abstract class CardPanelContainer extends SkinnedPanel {
         this.scrollPane = scrollPane;
         this.setOpaque(true);
         setupMouseListeners();
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            javax.swing.ToolTipManager.sharedInstance().registerComponent(this);
+        }
+    }
+
+    @Override public String getToolTipText(final MouseEvent event) {
+        final CardPanel hit = getCardPanel(event.getX(), event.getY());
+        return hit == null ? null : hit.getAbilityToolTip(event.getX(), event.getY());
     }
 
     protected final CMatchUI getMatchUI() {

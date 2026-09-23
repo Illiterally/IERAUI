@@ -116,6 +116,9 @@ public class CField implements ICDoc {
         };
 
         view.getDetailsPanel().setupMouseActions(zoneActionFactory, zoneRightClick, manaAction);
+        if (view.getStatusBar() != null) {
+            view.getStatusBar().setupActions(zoneActionFactory, zoneRightClick, manaAction);
+        }
     }
 
     public final CMatchUI getMatchUI() {

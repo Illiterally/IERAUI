@@ -135,11 +135,12 @@ public class CHand implements ICDoc {
             revealPlaceholders(placeholders);
             return;
         }
-        final Rectangle rctLibraryLabel = vf.getDetailsPanel().getLblLibrary().getBounds();
+        final java.awt.Component libraryAnchor = vf.getLibraryAnimationAnchor();
+        final Rectangle rctLibraryLabel = libraryAnchor.getBounds();
 
         // Animation starts from the library label and runs to the hand panel.
         // If that label has not been realized yet, the hand should still update.
-        if (rctLibraryLabel.isEmpty()) {
+        if (!libraryAnchor.isShowing() || rctLibraryLabel.isEmpty()) {
             revealPlaceholders(placeholders);
             return;
         }
@@ -154,7 +155,7 @@ public class CHand implements ICDoc {
         final JLayeredPane layeredPane = Singletons.getView().getFrame().getLayeredPane();
         int fromZoneX = 0, fromZoneY = 0;
 
-        final Point zoneLocation = SwingUtilities.convertPoint(vf.getDetailsPanel().getLblLibrary(),
+        final Point zoneLocation = SwingUtilities.convertPoint(libraryAnchor,
                 Math.round(rctLibraryLabel.width / 2.0f), Math.round(rctLibraryLabel.height / 2.0f), layeredPane);
         fromZoneX = zoneLocation.x;
         fromZoneY = zoneLocation.y;

@@ -32,6 +32,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 
 import forge.CachedCardImage;
@@ -77,6 +78,19 @@ public class VStack implements IVDoc<CStack> {
     private final AbilityMenu abilityMenu = new AbilityMenu();
 
     private StackInstanceTextArea hoveredItem;
+    private final StackActivity activity = new StackActivity();
+    private long attentionStarted;
+    private final Timer attentionTimer = new Timer(60, event -> fadeAttention());
+
+    private void fadeAttention() {
+        final long elapsed = System.currentTimeMillis() - attentionStarted;
+        if (elapsed >= 1800 || !tab.isShowing()) {
+            attentionTimer.stop();
+            tab.setFlashIntensity(0f);
+        } else {
+            tab.setFlashIntensity(0.5f * (1f - elapsed / 1800f), new Color(255, 211, 85));
+        }
+    }
 
     public StackInstanceTextArea getHoveredItem() {
         return hoveredItem;
@@ -85,6 +99,9 @@ public class VStack implements IVDoc<CStack> {
     private final CStack controller;
     public VStack(final CStack controller) {
         this.controller = controller;
+        tab.addHierarchyListener(event -> {
+            if (!tab.isShowing()) { attentionTimer.stop(); tab.setFlashIntensity(0f); }
+        });
     }
 
     @Override
@@ -126,7 +143,22 @@ public class VStack implements IVDoc<CStack> {
         }
 
         final FCollectionView<StackItemView> items = model.getStack();
-        tab.setText(Localizer.getInstance().getMessage("lblStack") + " : " + items.size());
+        final Localizer loc = Localizer.getInstance();
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            tab.setText(items.isEmpty() ? loc.getMessage("lblStack") + ": 0"
+                    : loc.getMessage("lblIERAStackWaiting", items.size()));
+            tab.setToolTipText(loc.getMessage("lblIERAStackHelp"));
+            final java.util.Set<Integer> ids = new java.util.HashSet<>();
+            for (final StackItemView item : items.threadSafeIterable()) { ids.add(item.getId()); }
+            if (activity.update(model.getId(), ids) && tab.isShowing()) {
+                attentionStarted = System.currentTimeMillis();
+                attentionTimer.restart();
+                fadeAttention();
+            } else if (items.isEmpty()) {
+                attentionTimer.stop();
+                tab.setFlashIntensity(0f);
+            }
+        } else { tab.setText(loc.getMessage("lblStack") + " : " + items.size()); }
 
         // No need to update the rest unless it's showing
         if (parentCell == null || !parentCell.getSelected().equals(this)) { return; }

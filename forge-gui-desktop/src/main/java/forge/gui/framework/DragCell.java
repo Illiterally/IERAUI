@@ -53,6 +53,7 @@ public final class DragCell extends JPanel implements ILocalRepaint {
     private final JLabel lblHandle = new DragHandle();
     private final JLabel lblOverflow = new JLabel();
     private IVDoc<? extends ICDoc> docSelected = null;
+    private javax.swing.JComponent headerAccessory;
 
     public DragCell() {
         super(new MigLayout("insets 0, gap 0, wrap 2"));
@@ -94,7 +95,7 @@ public final class DragCell extends JPanel implements ILocalRepaint {
     public void doCellLayout(final boolean showTabs) {
         this.removeAll();
         final int borderT = SLayoutConstants.BORDER_T;
-        final int headH = ((showTabs || allDocs.size() > 1) ? SLayoutConstants.HEAD_H : 0);
+        final int headH = ((showTabs || allDocs.size() > 1 || headerAccessory != null) ? SLayoutConstants.HEAD_H : 0);
         this.add(pnlHead,
                 "w 100% - " + borderT + "px!" + ", " + "h " + headH + "px!");
         this.add(pnlBorderRight,
@@ -119,6 +120,22 @@ public final class DragCell extends JPanel implements ILocalRepaint {
     /** @return {@link javax.swing.JPanel} */
     public JPanel getHead() {
         return DragCell.this.pnlHead;
+    }
+
+    /** Use the spare title-strip space without changing saved panel geometry. */
+    public void setHeaderAccessory(final javax.swing.JComponent accessory) {
+        if (headerAccessory == accessory) { return; }
+        if (headerAccessory != null) { pnlHead.remove(headerAccessory); }
+        headerAccessory = accessory;
+        final MigLayout layout = (MigLayout)pnlHead.getLayout();
+        if (accessory != null) {
+            pnlHead.add(accessory, "pushx, growx, w 0:100%, h 100%!, gap 4px 2px 0 0", allDocs.size());
+        }
+        layout.setComponentConstraints(lblHandle, accessory == null
+                ? "pushx, growx, h 100%!, gap 2px 2px 0 0" : "w 14px!, h 100%!, gap 2px 2px 0 0");
+        doCellLayout(showGameTabs());
+        pnlHead.revalidate();
+        pnlHead.repaint();
     }
 
     /** @return {@link javax.swing.JPanel} */
@@ -309,6 +326,7 @@ public final class DragCell extends JPanel implements ILocalRepaint {
         }
 
         docSelected = null;
+        setHeaderAccessory(null);
         pnlBody.removeAll();
 
         // Priorities are used to "remember" tab selection history.
@@ -343,7 +361,7 @@ public final class DragCell extends JPanel implements ILocalRepaint {
      * Refreshes visual display of head bar.
      */
     public void refresh() {
-        final int headW = pnlHead.getWidth();
+        final int headW = pnlHead.getWidth() - (headerAccessory == null ? 0 : Math.min(620, pnlHead.getWidth() / 2));
         if (docSelected == null)    { return; }
         if (headW <= 0)             { return; }
         if (allDocs.isEmpty())      { return; }

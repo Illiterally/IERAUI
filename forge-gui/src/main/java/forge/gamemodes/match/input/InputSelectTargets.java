@@ -130,22 +130,33 @@ public final class InputSelectTargets extends InputSyncronizedBase {
 
         if (divisionValues != null && !divisionValues.isEmpty() && sa.getMinTargets() == 0 && sa.getTargets().size() == 0) {
             // extra logic for Divided with min targets = 0, should only work if num targets are 0 too
-            getController().getGui().updateButtons(getOwner(), true, true, false);
+            updateTargetButtons(true, true, false);
         } else if (!sa.isMinTargetChosen() || (numTargets != null && targets.size() != numTargets) || (divisionValues != null && !divisionValues.isEmpty())) {
             // If reached Minimum targets, enable OK button
             if (mandatory && tgt.hasCandidates(sa)) {
                 // Player has to click on a target
-                getController().getGui().updateButtons(getOwner(), false, false, false);
+                updateTargetButtons(false, false, false);
             } else {
-                getController().getGui().updateButtons(getOwner(), false, true, false);
+                updateTargetButtons(false, true, false);
             }
         } else {
             if (mandatory && tgt.hasCandidates(sa)) {
                 // Player has to click on a target or ok
-                getController().getGui().updateButtons(getOwner(), true, false, true);
+                updateTargetButtons(true, false, true);
             } else {
-                getController().getGui().updateButtons(getOwner(), true, true, true);
+                updateTargetButtons(true, true, true);
             }
+        }
+    }
+
+    private void updateTargetButtons(final boolean confirm, final boolean cancel, final boolean focus) {
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            final Localizer loc = Localizer.getInstance();
+            getController().getGui().updateButtons(getOwner(),
+                    loc.getMessage(confirm && sa.getTargets().size() == 0 ? "lblIERANoTargets" : "lblIERAConfirmTargets"),
+                    loc.getMessage("lblCancel"), confirm, cancel, focus);
+        } else {
+            getController().getGui().updateButtons(getOwner(), confirm, cancel, focus);
         }
     }
 

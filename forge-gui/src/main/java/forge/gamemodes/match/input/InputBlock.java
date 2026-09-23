@@ -74,7 +74,14 @@ public class InputBlock extends InputSyncronizedBase {
         getController().pushBlockerCandidates(defender, combat);
         // could add "Reset Blockers" button
         Localizer localizer = Localizer.getInstance();
-        getController().getGui().updateButtons(getOwner(), true, false, true);
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            final boolean hasBlocks = combat.getAllBlockers().stream().anyMatch(c -> c.getController() == defender);
+            getController().getGui().updateButtons(getOwner(),
+                    localizer.getMessage(hasBlocks ? "lblIERAConfirmBlocks" : "lblIERANoBlocks"),
+                    localizer.getMessage("lblCancel"), true, false, true);
+        } else {
+            getController().getGui().updateButtons(getOwner(), true, false, true);
+        }
 
         if (currentAttacker == null) {
             showMessage(localizer.getMessage("lblSelectBlockTarget"));

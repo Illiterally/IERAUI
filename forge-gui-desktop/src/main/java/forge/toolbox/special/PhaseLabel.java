@@ -61,17 +61,12 @@ public class PhaseLabel extends JLabel {
             @Override
             public void mousePressed(final MouseEvent e) {
                 if (SwingUtilities.isRightMouseButton(e)) {
-                    if (PhaseLabel.this.onRightClick != null) {
-                        PhaseLabel.this.onRightClick.run();
-                    }
+                    PhaseLabel.this.requestYieldMarker();
                     return;
                 }
                 PhaseLabel.this.pressed = true;
                 PhaseLabel.this.pressTimer.restart();
-                PhaseLabel.this.enabled = !PhaseLabel.this.enabled;
-                if (PhaseLabel.this.onToggled != null) {
-                    PhaseLabel.this.onToggled.run();
-                }
+                PhaseLabel.this.toggleStop();
                 PhaseLabel.this.repaintOnlyThisLabel();
             }
 
@@ -97,7 +92,9 @@ public class PhaseLabel extends JLabel {
 
     public void setYieldMarked(final boolean b) {
         if (this.yieldMarked != b) {
+            final boolean previous = this.yieldMarked;
             this.yieldMarked = b;
+            firePropertyChange("phaseYield", previous, b);
             repaintOnlyThisLabel();
         }
     }
@@ -109,7 +106,20 @@ public class PhaseLabel extends JLabel {
      */
     @Override
     public void setEnabled(final boolean b) {
+        final boolean previous = this.enabled;
         this.enabled = b;
+        firePropertyChange("phaseStop", previous, b);
+        repaintOnlyThisLabel();
+    }
+
+    /** Shared by the vertical controls and the horizontal timeline. */
+    public void toggleStop() {
+        setEnabled(!enabled);
+        if (onToggled != null) { onToggled.run(); }
+    }
+
+    public void requestYieldMarker() {
+        if (onRightClick != null) { onRightClick.run(); }
     }
 
     /**
@@ -137,7 +147,9 @@ public class PhaseLabel extends JLabel {
      * @param b &emsp; boolean, true if phase is current
      */
     public void setActive(final boolean b) {
+        final boolean previous = this.active;
         this.active = b;
+        firePropertyChange("phaseActive", previous, b);
         this.repaintOnlyThisLabel();
     }
 
