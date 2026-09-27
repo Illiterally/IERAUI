@@ -24,6 +24,8 @@ public final class PlayerStatusBar extends JPanel {
     private static final Color BACKGROUND = new Color(21, 31, 38);
     private static final Color TEXT = new Color(239, 245, 249);
     private static final Color ACCENT = new Color(101, 208, 233);
+    private static final Color BUTTON_BACKGROUND = new Color(38, 54, 65);
+    private static final Color READY_BACKGROUND = new Color(16, 112, 148);
     private static final ZoneType[] ZONES = { ZoneType.Hand, ZoneType.Library, ZoneType.Graveyard,
             ZoneType.Exile, ZoneType.Command, ZoneType.Flashback, ZoneType.Sideboard };
     private final PlayerView player;
@@ -39,6 +41,7 @@ public final class PlayerStatusBar extends JPanel {
     private final java.util.Set<CounterType> knownCounters = new java.util.LinkedHashSet<>();
     private final Timer changeTimer = new Timer(150, event -> updateStatus());
     private boolean statusInitialized;
+    private boolean commanderCastable;
     private static final int GAP = 4;
     private static final int PAD = 6;
     private final JLabel pool;
@@ -181,6 +184,7 @@ public final class PlayerStatusBar extends JPanel {
             component.setBounds(x, 3, componentWidth, height);
             x += componentWidth + GAP;
         }
+        updateCommanderCue();
     }
 
     private static JLabel label(final Font font, final Color color) {
@@ -194,11 +198,53 @@ public final class PlayerStatusBar extends JPanel {
         final JButton button = new JButton();
         button.setFont(font);
         button.setForeground(TEXT);
-        button.setBackground(new Color(38, 54, 65));
+        button.setBackground(BUTTON_BACKGROUND);
         button.setMargin(new Insets(1, 5, 1, 5));
         button.setFocusable(false);
         button.setFocusPainted(false);
+        final javax.swing.border.Border normalBorder = button.getBorder();
+        button.putClientProperty("normalBorder", normalBorder);
+        button.putClientProperty("readyBorder", new javax.swing.border.AbstractBorder() {
+            @Override public Insets getBorderInsets(final Component c) { return normalBorder.getBorderInsets(c); }
+            @Override public Insets getBorderInsets(final Component c, final Insets insets) {
+                final Insets original = getBorderInsets(c);
+                insets.set(original.top, original.left, original.bottom, original.right);
+                return insets;
+            }
+            @Override public void paintBorder(final Component c, final Graphics g,
+                                              final int x, final int y, final int width, final int height) {
+                g.setColor(ACCENT);
+                g.drawRect(x, y, width - 1, height - 1);
+                g.drawRect(x + 1, y + 1, width - 3, height - 3);
+            }
+        });
         return button;
+    }
+
+    /** Mirrors the current priority window, not merely the command-zone count. */
+    public void setCommanderCastable(final boolean castable) {
+        commanderCastable = castable;
+        updateCommanderCue();
+    }
+
+    private void updateCommanderCue() {
+        final JButton commander = zones.get(ZoneType.Command);
+        final boolean ready = commanderCastable && player.getZoneSize(ZoneType.Command) > 0;
+        final String hint = ready ? text.apply("lblIERACommanderReady") : null;
+        styleReady(commander, ready);
+        commander.setToolTipText(ready ? hint : zoneName.apply(ZoneType.Command) + ": "
+                + player.getZoneSize(ZoneType.Command) + ". " + text.apply("lblIERAZoneClickHint"));
+        commander.getAccessibleContext().setAccessibleName(commander.getText() + (ready ? ". " + hint : ""));
+        // A narrow window can move Commander into More; keep its cue visible there.
+        final boolean inMore = ready && !commander.isVisible();
+        styleReady(more, inMore);
+        more.setToolTipText(inMore ? hint : text.apply("lblIERAMoreResources"));
+        more.getAccessibleContext().setAccessibleName(more.getText() + (inMore ? ". " + hint : ""));
+    }
+
+    private static void styleReady(final JButton button, final boolean ready) {
+        button.setBackground(ready ? READY_BACKGROUND : BUTTON_BACKGROUND);
+        button.setBorder((javax.swing.border.Border) button.getClientProperty(ready ? "readyBorder" : "normalBorder"));
     }
 
     public void setupActions(final Function<ZoneType, Runnable> zoneAction,
@@ -249,6 +295,14 @@ public final class PlayerStatusBar extends JPanel {
         final JMenuItem item = new JMenuItem(title, button.getIcon());
         item.setName(button.getName());
         item.setEnabled(button.isEnabled());
+        item.setToolTipText(button.getToolTipText());
+        item.getAccessibleContext().setAccessibleName(button.getAccessibleContext().getAccessibleName());
+        if (button == zones.get(ZoneType.Command) && commanderCastable
+                && player.getZoneSize(ZoneType.Command) > 0) {
+            item.setOpaque(true);
+            item.setBackground(READY_BACKGROUND);
+            item.setForeground(TEXT);
+        }
         item.addActionListener(e -> button.doClick(0));
         menu.add(item);
     }
@@ -308,6 +362,7 @@ public final class PlayerStatusBar extends JPanel {
             entry.getValue().setToolTipText(zoneName.apply(zone) + ": " + count
                     + ". " + text.apply("lblIERAZoneClickHint"));
         }
+        updateCommanderCue();
         revalidate();
         repaint();
         if (isShowing() && changes.isActive(now)) { changeTimer.start(); }

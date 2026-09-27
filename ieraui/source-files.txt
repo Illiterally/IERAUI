@@ -37,4 +37,6 @@ forge-gui/src/main/java/forge/gamemodes/match/input/InputSelectManyBase.java
 forge-gui/src/main/java/forge/gamemodes/match/input/InputSelectTargets.java
 forge-gui/src/main/java/forge/gamemodes/match/input/PriorityPrompt.java
 forge-gui/src/main/java/forge/gui/EnhancedRulesUi.java
+forge-gui/src/main/java/forge/gui/interfaces/IGuiGame.java
+forge-gui/src/main/java/forge/player/CommanderCastability.java
 forge-gui/src/main/java/forge/player/PlayerControllerHuman.java

@@ -1544,6 +1544,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     /** Cache from {@link AvailableActions#collectActionable}, populated in
      *  {@link #chooseSpellAbilityToPlay} and reused by {@link #pushActionableCards}. */
     private Set<CardView> cachedActionableCards;
+    private volatile boolean cachedCommanderCastable;
 
     /** Push the actionable-card set to the GUI. Payment mode falls back to the
      *  "playable mana ability" predicate; non-payment reuses {@link #cachedActionableCards}. */
@@ -1555,6 +1556,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
      *  auto-tap plan) are raised to strength 2 by adding them a second time, so the GUI can
      *  render them more prominently. Each pref layer is gated independently. */
     public void pushActionableCards(boolean paymentMode, Iterable<CardView> emphasized) {
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            getGui().setCommanderCastable(player.getView(), !paymentMode && cachedCommanderCastable);
+        }
         final boolean showActionable = yieldController.getBoolPref(FPref.UI_SHOW_ACTIONABLE_HIGHLIGHTS);
         final boolean showAutoTap = emphasized != null
                 && yieldController.getBoolPref(FPref.UI_SHOW_AUTOTAP_PREVIEW);
@@ -1605,6 +1609,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     }
 
     public void clearActionableCards() {
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            getGui().setCommanderCastable(player.getView(), false);
+        }
         getGui().clearWeaklySelectable();
     }
 
@@ -1658,6 +1665,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         netLog.trace("ENTRY for player {}, phase={}, isGameOver={}",
                 player.getName(), getGame().getPhaseHandler().getPhase(), getGame().isGameOver());
         final MagicStack stack = getGame().getStack();
+
+        // Keep cost prediction off the EDT. A fresh priority window follows every action.
+        cachedCommanderCastable = forge.gui.EnhancedRulesUi.isEnabled()
+                && !yieldController.isYieldActive() && CommanderCastability.canCast(player);
 
         // Skip when already yielding — yield proceeds regardless of available-actions.
         // Compute the actionable set when APINA / suggestions / highlights need it.

@@ -276,6 +276,9 @@ public interface IGuiGame {
     void setWeaklySelectable(final Iterable<CardView> cards);
     void clearWeaklySelectable();
 
+    /** Optional desktop cue; mobile and older remote clients keep their existing UI. */
+    default void setCommanderCastable(PlayerView player, boolean castable) { }
+
     boolean isGamePaused();
     void setGamePause(boolean pause);
 

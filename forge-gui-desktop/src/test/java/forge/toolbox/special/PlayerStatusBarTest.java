@@ -28,6 +28,7 @@ public class PlayerStatusBarTest {
                     case "lblIERAPlayable" -> "Playable";
                     case "lblDeck" -> "Deck";
                     case "lblCommander" -> "Commander";
+                    case "lblIERACommanderReady" -> "Commander ready to cast. Click to open the command zone.";
                     default -> key;
                 }, ZoneType::name, color -> null, zone -> new Icon() {
                     @Override public int getIconWidth() { return 16; }
@@ -203,5 +204,61 @@ public class PlayerStatusBarTest {
             Assert.assertTrue(right <= bar.getWidth(), component.getName());
             Assert.assertTrue(component.getY() + component.getHeight() <= bar.getHeight());
         }
+    }
+
+    @Test public void castableCommanderHasBlueCueWithoutChangingSizeOrClickBehavior() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            final PlayerView player = mock(PlayerView.class);
+            when(player.getZoneSize(ZoneType.Command)).thenReturn(1);
+            final PlayerStatusBar bar = create(player);
+            final JButton commander = button(bar, "zone-Command");
+            final Color normal = commander.getBackground();
+            final Dimension size = commander.getPreferredSize();
+            final List<ZoneType> opened = new ArrayList<>();
+            bar.setupActions(zone -> () -> opened.add(zone), (zone, e) -> {}, color -> false);
+            bar.setCommanderCastable(true);
+            bar.updateStatus(); // resource updates must not erase the cue
+            Assert.assertNotEquals(commander.getBackground(), normal);
+            Assert.assertEquals(commander.getPreferredSize(), size);
+            Assert.assertTrue(commander.getToolTipText().contains("ready to cast"));
+            Assert.assertTrue(commander.getAccessibleContext().getAccessibleName().contains("ready to cast"));
+            commander.doClick(0);
+            Assert.assertEquals(opened, List.of(ZoneType.Command));
+            bar.setCommanderCastable(false); // priority ended / payment began
+            Assert.assertEquals(commander.getBackground(), normal);
+            Assert.assertFalse(commander.getToolTipText().contains("ready to cast"));
+            bar.setCommanderCastable(true);
+            when(player.getZoneSize(ZoneType.Command)).thenReturn(0);
+            bar.updateStatus();
+            Assert.assertEquals(commander.getBackground(), normal);
+        });
+    }
+
+    @Test public void readyCueFollowsCommanderIntoMoreAndBack() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            final PlayerView player = mock(PlayerView.class);
+            when(player.getZoneSize(ZoneType.Command)).thenReturn(2);
+            final PlayerStatusBar bar = create(player);
+            final JButton more = button(bar, "extra-zones");
+            final Color normal = more.getBackground();
+            bar.setCommanderCastable(true);
+            bar.setSize(360, bar.getPreferredSize().height);
+            bar.doLayout();
+            Assert.assertFalse(button(bar, "zone-Command").isVisible());
+            Assert.assertNotEquals(more.getBackground(), normal);
+            Assert.assertEquals(menuItem(bar.createOverflowMenu(), "zone-Command").getBackground(), more.getBackground());
+            Assert.assertTrue(more.getAccessibleContext().getAccessibleName().contains("ready to cast"));
+            assertSingleRowWithinBounds(bar);
+            bar.setSize(1400, bar.getHeight());
+            bar.doLayout();
+            Assert.assertTrue(button(bar, "zone-Command").isVisible());
+            Assert.assertEquals(more.getBackground(), normal);
+            Assert.assertNotEquals(button(bar, "zone-Command").getBackground(), normal);
+            bar.setSize(360, bar.getHeight());
+            bar.doLayout();
+            bar.setCommanderCastable(false);
+            Assert.assertEquals(more.getBackground(), normal);
+            Assert.assertFalse(more.getAccessibleContext().getAccessibleName().contains("ready to cast"));
+        });
     }
 }

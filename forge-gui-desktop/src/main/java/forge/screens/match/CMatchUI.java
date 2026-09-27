@@ -820,6 +820,16 @@ public final class CMatchUI
         lastClickedCardPanel = panel;
     }
 
+    @Override
+    public void setCommanderCastable(final PlayerView player, final boolean castable) {
+        FThreads.invokeInEdtNowOrLater(() -> {
+            final VField field = getFieldViewFor(player);
+            if (field != null && field.getStatusBar() != null) {
+                field.getStatusBar().setCommanderCastable(castable);
+            }
+        });
+    }
+
     /** Find an already visible anchor without changing tabs or opening another zone. */
     public CardPanel findVisibleCardPanel(final CardView card) {
         if (card == null || card.isFaceDown() || !mayView(card)) { return null; }
