@@ -12,5 +12,5 @@ Push-Location -LiteralPath $repoRoot
 try {
     & $Maven @buildArgs
     if ($LASTEXITCODE -ne 0) { throw "Maven failed with exit code $LASTEXITCODE" }
-    & (Join-Path $PSScriptRoot 'Package-Addon.ps1') -BuiltJar (Join-Path $repoRoot 'forge-gui-desktop/target/forge-gui-desktop-2.0.14-jar-with-dependencies.jar') -OutputDirectory $OutputDirectory
+    & (Join-Path $PSScriptRoot 'Package-Addon.ps1') -BuiltJar (Join-Path $repoRoot 'forge-gui-desktop/target/forge-gui-desktop-2.0.15-jar-with-dependencies.jar') -OutputDirectory $OutputDirectory
 } finally { Pop-Location }

@@ -1,5 +1,7 @@
 # Illiterally's Enhanced Rules Analysis UI (IERAUI)
 
+**Local update: IERAUI 0.1.14 on Forge Desktop 2.0.15.** This branch preserves the existing UI addon and Commander cue on the September 28, 2026 Forge release. Public v0.1.12 below remains the older Forge 2.0.14 package. See [current setup](ieraui/docs/SETUP.md) and [build instructions](ieraui/docs/BUILD.md).
+
 **A UI Addon for Forge — an Illiterally Custom.**
 
 I made this because I was enjoying Forge and kept getting lost in the interface. I would resolve an upkeep trigger, click the same button again, and miss my main phase. An ability would be available and I would overlook it. I knew what I wanted to try, but finding the right interaction kept getting in the way.

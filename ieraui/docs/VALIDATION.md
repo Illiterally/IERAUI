@@ -24,3 +24,17 @@ The launcher checksum check uses Windows PowerShell's .NET cryptography support,
 ## Scope
 
 These checks cover this Windows package and the selected UI regressions. They are not the full upstream test suite, an exhaustive card-interaction test, or validation on macOS, Linux, mobile, or another Forge version. The checksum file beside the release covers the final downloadable ZIP; its included manifest lists the actual addon classes and file hashes.
+
+## 0.1.14 local update — 2026-10-07
+
+- Upstream base: official Forge 2.0.15, commit `4ec5f1a2c32fa90ecb983a72b9eb47aa5c5d7676`.
+- Official release archive SHA-256: `4468f182b60f6ca62d89697baa208981085af744f116781af751c611826db600`.
+- Official desktop JAR SHA-256: `85a4c31e07d4d5621a84bb03b6d75fd08e9f4ba289e575c870579b49c0033766`.
+- All six desktop build modules passed; 75 focused IERAUI tests passed, zero failures/errors/skips.
+- Packaged addon: 97 class files from 42 source files; runtime audit used this addon on the unmodified official base JAR.
+- Runtime initialized the actual installed card database. All unique names from the normal card sections loaded and constructed successfully: FIN 299, FIC 339, FCA 64, FRA 285. Alternate printings are not counted separately.
+- Timey Wimey loaded as 98 main cards plus The Tenth Doctor and Rose Tyler as commanders; all 100 cards use WHO printings. Forge's Commander deck validation passed and both commanders survived player registration.
+- Validation ran headlessly with an isolated test profile. No live match or mouse/keyboard input was used.
+- The official 2.0.15 artifact displays `2.0.15-SNAPSHOT-09.28` internally; its provenance and checksum match the tagged stable release.
+- Merge retained Forge's new confirmation recording and revealed-card interfaces alongside IERAUI labels and Commander cues.
+- This update is local; no GitHub release or website publication was performed.

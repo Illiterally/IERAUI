@@ -13,7 +13,7 @@ if (Test-Path -LiteralPath $outputPath) { throw 'Choose a new output directory; 
 New-Item -ItemType Directory -Path $outputPath | Out-Null
 $payload = Join-Path $outputPath 'payload'
 New-Item -ItemType Directory -Path $payload | Out-Null
-$addonPath = Join-Path $payload 'ieraui-addon-0.1.12.jar'
+$addonPath = Join-Path $payload 'ieraui-addon-0.1.14.jar'
 $sources = @(Get-Content -LiteralPath (Join-Path $repoRoot 'ieraui/source-files.txt') | Where-Object { $_.Trim() })
 $inputZip = [IO.Compression.ZipFile]::OpenRead($builtPath)
 $outputZip = [IO.Compression.ZipFile]::Open($addonPath, [IO.Compression.ZipArchiveMode]::Create)
@@ -51,27 +51,27 @@ foreach ($doc in @('SETUP.md','FEATURES.md','BUILD.md','ROADMAP.md','VALIDATION.
     Copy-Item -LiteralPath (Join-Path $repoRoot ('ieraui/docs/'+$doc)) -Destination (Join-Path $payload ('IERAUI/'+$doc))
 }
 $sourceText = @'
-IERAUI 0.1.12 corresponding source and build instructions:
-https://github.com/Illiterally/IERAUI/tree/v0.1.12
-https://github.com/Illiterally/IERAUI/archive/refs/tags/v0.1.12.zip
+IERAUI 0.1.14 corresponding source and build instructions:
+Local source branch: ieraui-forge-2.0.15
+Cumulative patch: ieraui/ieraui-0.1.14.patch
 
-The full Forge-based source is in that release tag. Build instructions are in
-ieraui/docs/BUILD.md. The upstream base is Forge 2.0.14, commit
-a37a865a53280dd8ad6fad3384d69611e8c5a42f. The addon is GPL-3.0-or-later.
+This is a local candidate; no public 0.1.14 tag is published. Build instructions are in
+ieraui/docs/BUILD.md. The upstream base is Forge 2.0.15, commit
+4ec5f1a2c32fa90ecb983a72b9eb47aa5c5d7676. The addon is GPL-3.0-or-later.
 '@
 [IO.File]::WriteAllText((Join-Path $payload 'IERAUI/SOURCE.txt'),$sourceText,[Text.UTF8Encoding]::new($false))
 $inventory = [ordered]@{
-    addon = 'IERAUI'; version = '0.1.12'; forgeVersion = '2.0.14'
-    upstreamCommit = 'a37a865a53280dd8ad6fad3384d69611e8c5a42f'
-    requiredForgeJarSha256 = '3C0A7C385B9207E593FE149255E00D1CD7E556809F138568D07E3828B78E5DD9'
+    addon = 'IERAUI'; version = '0.1.14'; forgeVersion = '2.0.15'
+    upstreamCommit = '4ec5f1a2c32fa90ecb983a72b9eb47aa5c5d7676'
+    requiredForgeJarSha256 = '85A4C31E07D4D5621A84BB03B6D75FD08E9F4BA289E575C870579B49C0033766'
     addonJarSha256 = (Get-FileHash -LiteralPath $addonPath).Hash
     languageSha256 = (Get-FileHash -LiteralPath (Join-Path $payload 'res/languages/en-US.properties')).Hash
     compiledSourceCount = $sources.Count; classCount = $classNames.Count
     classes = @($classNames | Sort-Object)
 }
 [IO.File]::WriteAllText((Join-Path $payload 'IERAUI/manifest.json'),($inventory|ConvertTo-Json -Depth 4)+"`n",[Text.UTF8Encoding]::new($false))
-$zipPath = Join-Path $outputPath 'IERAUI-0.1.12-addon.zip'
+$zipPath = Join-Path $outputPath 'IERAUI-0.1.14-addon.zip'
 [IO.Compression.ZipFile]::CreateFromDirectory($payload,$zipPath,[IO.Compression.CompressionLevel]::Optimal,$false)
 $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText((Join-Path $outputPath 'SHA256SUMS.txt'), "$zipHash  IERAUI-0.1.12-addon.zip`n",[Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $outputPath 'SHA256SUMS.txt'), "$zipHash  IERAUI-0.1.14-addon.zip`n",[Text.UTF8Encoding]::new($false))
 Write-Output "Packaged $($classNames.Count) Forge classes from $($sources.Count) source files: $zipPath"

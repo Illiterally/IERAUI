@@ -1,65 +1,29 @@
-# Set up IERAUI
+# IERAUI 0.1.14 setup
 
-This package is for **Forge Desktop 2.0.14 on Windows**. Start with a fresh extracted copy so your existing Forge installation stays available.
+This local update targets **Forge Desktop 2.0.15 on Windows** and requires Java 17 or later. It is a UI Addon built on Forge's rules simulation, card implementations, and deck tools. Forge's contributors supply the underlying program and content.
 
-## 1. Get Forge
+## Fresh installation
 
-Open the [official Forge 2.0.14 release](https://github.com/Card-Forge/forge/releases/tag/forge-2.0.14) and download **forge-installer-2.0.14.tar.bz2**. Extract the archive completely using an archive utility that supports `.tar.bz2`.
+1. Extract the official [Forge 2.0.15 release](https://github.com/Card-Forge/forge/releases/tag/forge-2.0.15) into a new folder.
+2. Extract the IERAUI 0.1.14 addon payload into that folder, alongside `forge-gui-desktop-2.0.15-jar-with-dependencies.jar`.
+3. Run `Play IERAUI.cmd`. The launcher checks that the original Forge JAR matches the tested release and enables the addon.
 
-Find the folder containing both `res` and `forge-gui-desktop-2.0.14-jar-with-dependencies.jar`. This is the folder you need in the next step. Put it somewhere you can write to, such as a folder under Documents.
+The local candidate has not been published to GitHub. The public IERAUI v0.1.12 package targets the older Forge 2.0.14 release and is not interchangeable with this update.
 
-## 2. Add IERAUI
+## Existing installation
 
-Download **IERAUI-0.1.12-addon.zip** from the [IERAUI release](https://github.com/Illiterally/IERAUI/releases/tag/v0.1.12). Extract its contents into the Forge folder from step 1. Allow the included English language file to replace the one in this fresh copy.
+Close Forge before copying your existing `data` and `cache` folders into the new installation. Keep the old installation as a rollback copy. Do not replace your existing preferences with the minimal fresh-install defaults from the addon payload.
 
-You should now see these files together:
+Your saved decks, commanders, achievements, and layouts live in `data`. Downloaded artwork lives in `cache`. The portable profile keeps both beside the launcher.
 
-```text
-Play IERAUI.cmd
-ieraui-addon-0.1.12.jar
-forge-gui-desktop-2.0.14-jar-with-dependencies.jar
-forge.profile.properties
-res/
-IERAUI/
-```
+## Finding sets and decks
 
-Don't extract this package over your established personal installation. The included portable profile keeps this new copy's decks, settings, and image cache in its own `data` and `cache` folders.
+Final Fantasy is available as **FIN** (main set), **FIC** (Commander), and **FCA** (Through the Ages). Search the card catalog in the Deck Editor and choose the relevant set filter. Format and commander color filters can narrow the cards displayed.
 
-## 3. Check Java, then launch
+Keep **Download Missing Images** enabled to fetch artwork as cards are viewed.
 
-Forge requires Java 17 or later. Java 21 was used for IERAUI's Windows checks. The launcher uses `runtime/bin/javaw.exe` if your copy has a runtime, then `JAVA_HOME`, then Java on your PATH. If none is available, install a suitable Java runtime from its official provider, such as [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21&os=windows&arch=x64).
+The personal deck **Timey Wimey** uses the official Doctor Who precon list, with 98 main-deck cards and The Tenth Doctor plus Rose Tyler in its Commander section. Select it from **Commander Decks** with the Commander variant enabled. The personal deck is not bundled in the addon package.
 
-Double-click **Play IERAUI.cmd**. The window title should include **Illiterally's Enhanced Rules Analysis UI**. In a match, look for the horizontal phase strip and the labeled resource bar above your hand.
+## Support and attribution
 
-The launcher checks the expected Forge JAR before starting. A version mismatch means you need the official 2.0.14 files. Renaming a different version's JAR will not make it compatible.
-
-## 4. Bring a deck and start experimenting
-
-Use Forge's normal deck editor and match setup. Import or open a deck in the editor for the format you're using, save it, then select that deck in match setup.
-
-**Constructed and Commander decks are stored separately.** Two decks can share a name while containing different cards. To edit the deck selected for a match, use the edit/pencil control beside that deck in match setup. When copying `.dck` files from another installation, put Commander decks in `data/decks/commander` and Constructed decks in `data/decks/constructed` in this new copy.
-
-Forge handles its card resources and image downloads. IERAUI doesn't supply a separate collection of card artwork. Audio can be adjusted in Forge's preferences; this fresh addon profile starts muted.
-
-## A few controls worth knowing
-
-- **Resolve** passes priority normally. Another participant can still respond; it does not force the whole stack to resolve.
-- The highlighted phase is where you are now. Clicking a phase in the timeline toggles a stop; it doesn't jump there.
-- **Tap Mana** shows source choices. Click sources or spend mana from your pool. **Auto** is a separate shortcut.
-- Drag a floating card prompt by its existing top area. Its close button hides the small prompt; the full Prompt remains available.
-- Card-picture previews remain immediate. Tooltips wait 1.5 seconds.
-
-## Updates and recovery
-
-Finish the current match before changing files. Keep each supported Forge/addon pair together. This release has no automatic updater and has not been validated against other Forge versions.
-
-IERAUI saves its settings and decks in this copy's `data` folder. Back that folder up before a future upgrade. If a panel layout becomes unreadable, the layout recovery code tries the previous valid backup before using Forge's default layout.
-
-To return to your previous setup, close this copy and use your original Forge launcher. No system-wide Forge settings are changed by extracting this addon into a fresh portable folder.
-
-## If it won't start
-
-- Make sure the two JARs and launcher are beside `res`, rather than inside an extra nested ZIP folder.
-- Read the launcher's error text. Missing Java, the wrong Forge version, or a missing addon JAR are checked before launch.
-- If Windows blocks a downloaded file, inspect its source and properties before deciding whether to unblock it. No administrator access is needed by IERAUI.
-- Report the IERAUI version, Forge version, Java version, and the relevant error in [IERAUI issues](https://github.com/Illiterally/IERAUI/issues). Review logs before sharing them; omit private paths or information you don't want public.
+For an addon problem, report the IERAUI and Forge versions and the steps that led to it. The addon is independent of the Forge project. Original Forge notices and the GPL license are retained; see `NOTICE.md` and `LICENSE.txt`.
