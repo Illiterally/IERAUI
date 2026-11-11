@@ -72,6 +72,7 @@ public class InputLondonMulliganTest {
     private Card card() {
         final Card result = mock(Card.class);
         when(result.getView()).thenReturn(mock(CardView.class));
+        when(result.getRenderForUI()).thenReturn(true);
         return result;
     }
 
@@ -137,6 +138,6 @@ public class InputLondonMulliganTest {
         input.selectCard(first, null, null);
         input.selectButtonOK();
         Assert.assertEquals(input.getSelectedCards().getFirst(), first);
-        verify(gui, never()).setSelection(Selection.NONE);
+        verify(gui, atLeastOnce()).setSelection(Selection.NONE);
     }
 }

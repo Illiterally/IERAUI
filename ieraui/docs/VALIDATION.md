@@ -105,3 +105,12 @@ These checks cover this Windows package and the selected UI regressions. They ar
 - A fixed-seed audit called Forge's normal player shuffle 1,500 times with three Mondrak and three Anointed Procession among 60 cards. Every card and copy was retained; 34 runs had none of those six in the first 27 cards (expected probability approximately 2.21%). This audit found no evidence warranting shuffle changes and is not a proof about every random sequence.
 - Tests used an isolated profile. The Windows test agent was preloaded, and test temporary files were directed to a writable workspace folder because the sandbox's default temporary directory denied atomic file renames.
 - Card scripts, damage rules, achievement thresholds, and shuffling are unchanged. No live desktop interaction or game restart is part of the update. Runtime linkage and install hashes are recorded separately when installing the package. This is a local update, not a public GitHub release.
+
+## 0.1.21 — Forge 2.0.16, 2026-11-11
+
+- Official base commit: `583714b8bfbd9cb04f8bc39ad95861190caf7691`. Official desktop JAR SHA-256: `16b954c64eeb8444e99b109d91ec9c57ca394a0a07041b01b83b268e92d81a75`.
+- Ported prompts to upstream Selection messages; network protocol and serialized view classes remain official Forge classes.
+- Includes the local improvements through 0.1.20. Upstream AI changes retained, with same-thread cooperative evaluation.
+- Regression checks cover UI, persistence, mana, combat, serialization and a real TCP network game. Packaged-runtime checks use the untouched official release JAR. These local network checks do not verify Internet routing between two households.
+- ZIP defaults are initialize-only: existing profiles and preferences are never replaced.
+- Final focused suite: **168 tests passed; zero failures, errors or skips**.

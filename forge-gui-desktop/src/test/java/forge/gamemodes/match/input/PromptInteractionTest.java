@@ -151,9 +151,11 @@ public class PromptInteractionTest {
         when(stack.size()).thenReturn(3);
         when(phases.getPhase()).thenReturn(PhaseType.MAIN2);
         when(controller.canUndoLastAction()).thenReturn(true);
-        when(stack.getUndoStackSize()).thenReturn(1);
+        final forge.game.undo.UndoManager undo = mock(forge.game.undo.UndoManager.class);
+        when(game.getUndoManager()).thenReturn(undo);
+        when(undo.undosLeft()).thenReturn(1);
         new InputPassPriority(controller).showMessage();
-        verify(gui).updateButtons(owner, "Resolve next", "Undo (1)", true, true, true);
+        verify(gui).updateButtons(owner, "Resolve next", "Undo (1)", true, true, true, true);
         verify(stack, never()).resolveStack();
     }
 
@@ -505,6 +507,7 @@ public class PromptInteractionTest {
         when(battlefield.contains(doll)).thenReturn(true);
         final Card attacker = mock(Card.class);
         when(attacker.getView()).thenReturn(mock(CardView.class));
+        when(attacker.getController()).thenReturn(player);
         when(attacker.getGame()).thenReturn(game);
         when(attacker.getDisplayName()).thenReturn("Stonecoil Serpent");
         final Combat combat = mock(Combat.class);
@@ -534,6 +537,7 @@ public class PromptInteractionTest {
         verify(gui, atLeastOnce()).updateButtons(owner, "No attacks", "Select all attackers", true, true, true);
         final Card attacker = mock(Card.class);
         when(attacker.getView()).thenReturn(mock(CardView.class));
+        when(attacker.getController()).thenReturn(player);
         when(combat.getAttackers()).thenReturn(new CardCollection(attacker));
         attack.showMessage();
         verify(gui, atLeastOnce()).updateButtons(owner, "Confirm attackers (1)", "Clear attackers", true, true, true);
