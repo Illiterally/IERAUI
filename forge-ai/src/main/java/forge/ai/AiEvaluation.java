@@ -1,6 +1,7 @@
 package forge.ai;
 
 import java.util.concurrent.TimeUnit;
+import forge.util.AITimeoutTracker;
 import java.util.function.Supplier;
 
 /** Cooperative, same-thread AI decisions. Never leave a worker mutating a live game. */
@@ -13,10 +14,11 @@ public final class AiEvaluation {
         Long previous = DEADLINE.get();
         long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Math.max(0, timeoutMillis));
         DEADLINE.set(previous == null ? deadline : Math.min(previous, deadline));
+        final Object upstreamLimit = AITimeoutTracker.arm(DEADLINE.get(), false);
         try {
             check();
             return decision.get();
-        } catch (Expired expired) {
+        } catch (Expired | AITimeoutTracker.Expired expired) {
             // Nested decisions must unwind to the outer decision's fallback.
             if (previous != null) {
                 throw expired;
@@ -32,6 +34,7 @@ public final class AiEvaluation {
             AiCache.clear();
             return fallback;
         } finally {
+            AITimeoutTracker.disarm(upstreamLimit);
             if (previous == null) {
                 DEADLINE.remove();
             } else {

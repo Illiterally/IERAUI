@@ -68,7 +68,6 @@ public abstract class InputPayMana extends InputSyncronizedBase {
 
     @Override
     protected void onStop() {
-        getController().clearActionableCards();
         if (!isFinished()) {
             // Clear current Mana cost being paid for SA
             saPaidFor.setManaCostBeingPaid(null);
@@ -113,14 +112,25 @@ public abstract class InputPayMana extends InputSyncronizedBase {
     }
 
     protected List<SpellAbility> getAllManaAbilities(Card card) {
+        return getAllManaAbilities(card, player);
+    }
+
+    /**
+     * The playable mana abilities of {@code card} for {@code activator}. Only mana abilities (and
+     * their alternative costs) are considered, never spells, so this does not reach the stack
+     * look-ahead in {@link GameActionUtil#getAlternativeCosts} that rewrites layer state through
+     * {@code checkStaticAbilities}. That makes it the right predicate for UI-thread callers
+     * such as the payment highlights, which must not mutate the game while the game thread runs.
+     */
+    public static List<SpellAbility> getAllManaAbilities(Card card, Player activator) {
         List<SpellAbility> result = Lists.newArrayList();
         for (SpellAbility sa : card.getManaAbilities()) {
             result.add(sa);
-            result.addAll(GameActionUtil.getAlternativeCosts(sa, player, false));
+            result.addAll(GameActionUtil.getAlternativeCosts(sa, activator, false));
         }
         final Collection<SpellAbility> toRemove = Lists.newArrayListWithCapacity(result.size());
         for (final SpellAbility sa : result) {
-            sa.setActivatingPlayer(player);
+            sa.setActivatingPlayer(activator);
             if (sa.canPlay(true)) {
                 continue;
             }
@@ -332,31 +342,38 @@ public abstract class InputPayMana extends InputSyncronizedBase {
 
         locked = true;
         game.getAction().invoke(() -> {
-            if (PlaySpellAbility.playSpellAbility(getController(), chosen.getActivatingPlayer(), chosen)) {
-                final List<AbilityManaPart> manaAbilities = chosen.getAllManaParts();
-                boolean restrictionsMet = true;
+            try {
+                if (PlaySpellAbility.playSpellAbility(getController(), chosen.getActivatingPlayer(), chosen)) {
+                    final List<AbilityManaPart> manaAbilities = chosen.getAllManaParts();
+                    boolean restrictionsMet = true;
 
-                for (AbilityManaPart sa : manaAbilities) {
-                    if (!sa.meetsManaRestrictions(saPaidFor)) {
-                        restrictionsMet = false;
-                        break;
+                    for (AbilityManaPart sa : manaAbilities) {
+                        if (!sa.meetsManaRestrictions(saPaidFor)) {
+                            restrictionsMet = false;
+                            break;
+                        }
+                    }
+
+                    if (restrictionsMet && !player.getController().isFullControl(FullControlFlag.NoPaymentFromManaAbility)) {
+                        player.getManaPool().payManaFromAbility(saPaidFor, manaCost, chosen);
+                    }
+                    if (!restrictionsMet || chosen.getPayCosts().hasManaCost()) {
+                        // force refresh in case too much mana got spent
+                        invalidateAutoPayManaSources();
                     }
                 }
-
-                if (restrictionsMet && !player.getController().isFullControl(FullControlFlag.NoPaymentFromManaAbility)) {
-                    player.getManaPool().payManaFromAbility(saPaidFor, manaCost, chosen);
-                }
-                if (!restrictionsMet || chosen.getPayCosts().hasManaCost()) {
-                    // force refresh in case too much mana got spent
-                    updateButtons();
-                    invalidateAutoPayManaSources();
-                }
+            } finally {
+                // Need to call this to unlock, and to set the buttons if a render was skipped while busy
+                showMessage();
             }
-            // Need to call this to unlock
-            onStateChanged();
         });
 
         return true;
+    }
+
+    @Override
+    protected boolean isBusy() {
+        return locked;
     }
 
     protected boolean isAlreadyPaid() {
@@ -443,14 +460,14 @@ public abstract class InputPayMana extends InputSyncronizedBase {
         if (usesManualPaymentUi()) {
             // Every currently usable choice, rather than just the AI's preferred payment plan.
             final Set<CardView> sources = getManualManaSources();
-            getController().getGui().setWeaklySelectable(sources);
+            showSelection();
             updateButtons();
             final String hint = Localizer.getInstance().getMessage(manualPaymentRequested
                     ? (sources.isEmpty() ? "lblIERANoManaSources" : "lblIERAChooseManaSources")
                     : "lblIERATapManaHint");
             showMessage(getMessage() + "\n\n" + hint, saPaidFor.getView());
         } else {
-            getController().pushActionableCards(true, getAutoTapPreviewViews());
+            showSelection();
             showMessage(getMessage(), saPaidFor.getView());
         }
     }
@@ -470,7 +487,6 @@ public abstract class InputPayMana extends InputSyncronizedBase {
     @Override
     public void showMessage() {
         if (isFinished()) { return; }
-        if (!usesManualPaymentUi()) { getController().pushActionableCards(true); }
         updateButtons();
         onStateChanged();
     }
@@ -506,6 +522,12 @@ public abstract class InputPayMana extends InputSyncronizedBase {
         runAsAi(proc);
         autoPayManaSources = proc.getResult();
         autoPayManaSourcesKnown = true;
+    }
+
+    @Override
+    protected List<CardView> getActionable() {
+        if (usesManualPaymentUi()) { return new java.util.ArrayList<>(getManualManaSources()); }
+        return getController().getActionableCards(true, getAutoTapPreviewViews());
     }
 
     /** Cards the Auto button would tap, for emphasized highlighting; null when unavailable. */

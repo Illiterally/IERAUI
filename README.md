@@ -1,6 +1,6 @@
 # Illiterally's Enhanced Rules Analysis UI (IERAUI)
 
-**Local update: IERAUI 0.1.20 on Forge Desktop 2.0.15.** AI decisions use cooperative timeouts without leaving evaluation threads running; blocking checks reject impossible pairs earlier. Results distinguish actual overkill from unblocked attacking power that never dealt damage after a first-strike finish. Bestow creatures now refresh their displayed power/toughness when they stop being Auras. Choosing **Other** for an X mana cost shows an auto-pay maximum and **Use max** to fill it in before normal payment. Local player names, avatars, and Human/AI choices persist per seat. Deck-list restoration, preference backups, deck quantity menus, and the sideboarding exit fix are included. Public v0.1.12 below remains the older Forge 2.0.14 package. See [current setup](ieraui/docs/SETUP.md) and [build instructions](ieraui/docs/BUILD.md).
+**Local update: IERAUI 0.1.20 on Forge Desktop 2.0.15.** AI decisions use cooperative timeouts without leaving evaluation threads running; blocking checks reject impossible pairs earlier. Results distinguish actual overkill from unblocked attacking power that never dealt damage after a first-strike finish. Bestow creatures now refresh their displayed power/toughness when they stop being Auras. Choosing **Other** for an X mana cost shows an auto-pay maximum and **Use max** to fill it in before normal payment. Local player names, avatars, and Human/AI choices persist per seat. Deck-list restoration, preference backups, deck quantity menus, and the sideboarding exit fix are included. Public v0.1.21 below remains the older Forge 2.0.16 package. See [current setup](ieraui/docs/SETUP.md) and [build instructions](ieraui/docs/BUILD.md).
 
 **A UI Addon for Forge — an Illiterally Custom.**
 
@@ -8,7 +8,7 @@ I made this because I was enjoying Forge and kept getting lost in the interface.
 
 IERAUI is my attempt to make that part easier. It puts clearer action words, timing, resources, and feedback around Forge's existing rules simulation. The aim is to help newer users get to experimenting sooner and understand what happened when they do.
 
-[Download 0.1.12](https://github.com/Illiterally/IERAUI/releases/tag/v0.1.12) · [Setup guide](ieraui/docs/SETUP.md) · [What changes](ieraui/docs/FEATURES.md) · [Build from source](ieraui/docs/BUILD.md)
+[Download 0.1.21](https://github.com/Illiterally/IERAUI/releases/tag/v0.1.21) · [Setup guide](ieraui/docs/SETUP.md) · [What changes](ieraui/docs/FEATURES.md) · [Build from source](ieraui/docs/BUILD.md)
 
 ## Built on Forge
 
@@ -31,15 +31,19 @@ The cues explain where you can interact. Decisions stay with you. A blue outline
 
 ## Try it
 
-The first public package targets **Forge Desktop 2.0.14 on Windows**, using **Java 17 or later**. Local testing used Java 21. New UI text is currently in English.
+This package targets **Forge Desktop 2.0.16 on Windows**, using **Java 17 or later**. Local testing used Java 21. New UI text is currently in English.
 
-Download Forge 2.0.14 from its official release, extract it into a fresh folder, then extract the IERAUI addon ZIP into that same folder. Launch **Play IERAUI.cmd**. The [setup guide](ieraui/docs/SETUP.md) walks through the files, Java, and importing a deck.
+Download Forge 2.0.16 from its official release, extract it into a fresh folder, then extract the IERAUI addon ZIP into that same folder. Launch **Play IERAUI.cmd**. The [setup guide](ieraui/docs/SETUP.md) walks through the files, Java, and importing a deck.
 
 The addon download contains the changed Forge classes, English UI text, a launcher, and documentation. Get Forge and its resources from Forge's own release. No personal decks, saved layouts, card-image cache, or Java runtime are included in this download.
 
+## Online play
+
+Use Forge **2.0.16** on both computers. Install IERAUI **0.1.21** on both for matching UI behavior. Use Forge’s normal Host / Join lobby; IERAUI does not provide a separate server. Do not mix the old 2.0.14 or 2.0.15 packages.
+
 ## Still rough
 
-This is an early release built through actual use, and some of the most useful ideas are still ahead: explanations for cost increases and restricted mana, reliable potential-mana/MAX-X displays, conditional combat forecasts, and larger floating feedback. Those are [plans](ieraui/docs/ROADMAP.md), not features of this download.
+This is an early release built through actual use, and some of the most useful ideas are still ahead: explanations for cost increases and restricted mana, broader potential-mana calculations, conditional combat forecasts, and larger floating feedback. Those are [plans](ieraui/docs/ROADMAP.md), not features of this download.
 
 If something is unclear, an [issue here](https://github.com/Illiterally/IERAUI/issues) with the action you attempted and the version you used would help. Please report addon problems here first so Forge's maintainers don't inherit support for my changes.
 

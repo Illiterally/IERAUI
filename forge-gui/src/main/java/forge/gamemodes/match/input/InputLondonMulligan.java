@@ -18,7 +18,6 @@
 package forge.gamemodes.match.input;
 
 import forge.game.Game;
-import forge.game.GameEntityView;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
@@ -26,11 +25,11 @@ import forge.game.card.CardView;
 import forge.game.player.Player;
 import forge.game.zone.ZoneType;
 import forge.gui.EnhancedRulesUi;
+import forge.gamemodes.match.Selection;
 import forge.player.PlayerControllerHuman;
 import forge.util.ITriggerEvent;
 import forge.util.Localizer;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -63,11 +62,7 @@ public class InputLondonMulligan extends InputSyncronizedBase {
         int cardsLeft = toReturn - selected.size();
 
         if (EnhancedRulesUi.isEnabled()) {
-            final List<CardView> choices = new ArrayList<>();
-            for (final Card card : player.getZone(ZoneType.Hand).getCards()) {
-                choices.add(card.getView());
-            }
-            getController().getGui().setSelectables(choices, toReturn, toReturn);
+            showSelection();
             getController().getGui().updateButtons(getOwner(),
                     localizer.getMessage("lblIERAReturnSelected"), localizer.getMessage("lblIERAAutoReturn"),
                     cardsLeft == 0, cardsLeft != 0, true);
@@ -92,8 +87,7 @@ public class InputLondonMulligan extends InputSyncronizedBase {
     @Override
     protected void onStop() {
         if (EnhancedRulesUi.isEnabled()) {
-            resetCardHighlights();
-            getController().getGui().clearSelectables();
+            getController().getGui().setSelection(Selection.NONE);
         }
         super.onStop();
     }
@@ -101,19 +95,18 @@ public class InputLondonMulligan extends InputSyncronizedBase {
     /** {@inheritDoc} */
     @Override
     protected final void onOk() {
-        cardSelectLocked = true;
-        done();
+        getController().getGame().getView().updateIsMulligan(false);
+        stop();
     }
 
     @Override
     protected final void onCancel() {
         int cardsLeft = toReturn - selected.size();
         int count = 0;
-        for(Card c : player.getZone(ZoneType.Hand).getCards()) {
+        for (Card c : player.getZone(ZoneType.Hand).getCards()) {
             if (selected.contains(c)) { continue; }
 
             selected.add(c);
-            setCardHighlight(c, selected.contains(c));
             count++;
 
             if (cardsLeft == count) {
@@ -124,18 +117,10 @@ public class InputLondonMulligan extends InputSyncronizedBase {
         onOk();
     }
 
-    private void done() {
-        resetCardHighlights();
-        getController().getGame().getView().updateIsMulligan(false);
-        stop();
-    }
-
-    volatile boolean cardSelectLocked = false;
-
     @Override
     protected boolean onCardSelected(final Card c0, final List<Card> otherCardsToSelect, final ITriggerEvent triggerEvent) { // the only place that would cause troubles - input is supposed only to confirm, not to fire abilities
         final boolean fromHand = player.getZone(ZoneType.Hand).contains(c0);
-        if (!fromHand || cardSelectLocked) {
+        if (!fromHand) {
             return false;
         }
 
@@ -144,7 +129,7 @@ public class InputLondonMulligan extends InputSyncronizedBase {
         } else if (selected.size() < toReturn) {
             selected.add(c0);
         }
-        setCardHighlight(c0, selected.contains(c0));
+        showSelection();
         showMessage();
         return true;
     }
@@ -155,20 +140,19 @@ public class InputLondonMulligan extends InputSyncronizedBase {
 
     @Override
     public String getActivateAction(final Card card) {
-        if (EnhancedRulesUi.isEnabled() && !cardSelectLocked && player.getZone(ZoneType.Hand).contains(card)) {
+        if (EnhancedRulesUi.isEnabled() && !isFinished() && player.getZone(ZoneType.Hand).contains(card)) {
             return selected.contains(card) ? "unselect card" : "select card";
         }
         return null;
     }
 
-    private void setCardHighlight(final Card card, final boolean state) {
-        getController().getGui().setHighlighted(List.of(card.getView()), state);
-    }
-
-    private void resetCardHighlights() {
-        final List<GameEntityView> views = new ArrayList<>(selected.size());
-        for (final Card c : selected) views.add(c.getView());
-        getController().getGui().setHighlighted(views, false);
+    @Override
+    protected Selection getSelection() {
+        if (EnhancedRulesUi.isEnabled()) {
+            return new Selection(CardView.getCollection(player.getZone(ZoneType.Hand).getCards()),
+                    toReturn, toReturn, List.of(), new java.util.ArrayList<>(CardView.getCollection(selected)), List.of());
+        }
+        return Selection.ofChosen(CardView.getCollection(selected));
     }
 }
 

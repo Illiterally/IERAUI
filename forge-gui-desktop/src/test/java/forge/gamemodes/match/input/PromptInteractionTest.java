@@ -141,7 +141,7 @@ public class PromptInteractionTest {
         verify(gui, never()).showPromptMessage(eq(owner), contains("Priority:"), eq(source));
         input.selectButtonOK();
         verify(controller.macros()).addRememberedAction(any(PassPriorityAction.class));
-        verify(controller).clearActionableCards();
+        verify(gui, atLeastOnce()).setSelection(argThat(selection -> selection.actionable().isEmpty()));
         verify(controller, never()).autoPassUntilEndOfTurn();
         verify(stack, never()).resolveStack();
     }
@@ -360,14 +360,15 @@ public class PromptInteractionTest {
         final InputPayMana input = paymentInput(paidFor, Map.of(first, List.of(usable), second, List.of(usable), restricted, List.of(blocked)));
         try (MockedStatic<ComputerUtilMana> mana = mockStatic(ComputerUtilMana.class, withSettings().mockMaker("mock-maker-inline"))) {
             input.selectButtonOK();
-            verify(gui).setWeaklySelectable(Set.of(first.getView(), second.getView()));
+            verify(gui).setSelection(argThat(selection ->
+                    Set.copyOf(selection.actionable()).equals(Set.of(first.getView(), second.getView()))));
             verify(gui).showPromptMessage(eq(owner), contains("Click blue sources"), eq(source));
             Assert.assertFalse(input.canAutoPayMana());
             Assert.assertFalse(input.isPaid());
             verify(game, never()).getAction();
             mana.verify(() -> ComputerUtilMana.payManaCost(any(ManaCostBeingPaid.class), any(), any(), anyBoolean()), never());
-            input.onStop();
-            verify(controller).clearActionableCards();
+            input.stop();
+            verify(gui, atLeastOnce()).setSelection(argThat(selection -> selection.actionable().isEmpty()));
         }
     }
 

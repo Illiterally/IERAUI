@@ -338,7 +338,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
 
         if (forge.gui.EnhancedRulesUi.isEnabled() && getCard() != null && matchUI.mayView(getCard())
                 && isPreferenceEnabled(FPref.UI_SHOW_ACTIONABLE_HIGHLIGHTS)
-                && matchUI.isWeaklySelectable(getCard()) && !matchUI.isSelectable(getCard())) {
+                && matchUI.isActionable(getCard()) && !matchUI.isSelectable(getCard())) {
             final Color cue = parseActionableHighlightColor();
             for (int layer = 3; layer >= 1; layer--) {
                 final int n = layer + 1;
@@ -349,7 +349,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         }
 
         // Yellow glow for cards that Auto would tap to pay (weak-selectable strength >= 2)
-        if (isPreferenceEnabled(FPref.UI_SHOW_AUTOTAP_PREVIEW) && matchUI.getWeakSelectableStrength(getCard()) >= 2) {
+        if (isPreferenceEnabled(FPref.UI_SHOW_AUTOTAP_PREVIEW) && matchUI.getActionableStrength(getCard()) >= 2) {
             for (int layer = 2; layer >= 1; layer--) {
                 g2d.setColor(new Color(1f, 1f, 0f, 0.14f * layer));
                 final int n = Math.max(1, Math.round(layer * cardWidth * CardPanel.SELECTED_BORDER_SIZE));
@@ -418,7 +418,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
         }
 
         // Inner highlight: white for fully selectable cards, the configured colour for
-        // actionable (weakly selectable) ones. With black borders enabled this sits in the
+        // actionable ones. With black borders enabled this sits in the
         // border gap as a 1px inset; with borders disabled the card image fills the whole
         // panel and would cover an inset, so draw it as an outset (like the frames above).
         Color innerBorder = null;
@@ -426,7 +426,7 @@ public class CardPanel extends SkinnedPanel implements CardContainer, IDisposabl
             innerBorder = isHandChoice()
                     ? (matchUI.isHighlighted(card) ? new Color(86, 222, 151) : new Color(255, 193, 70))
                     : Color.WHITE;
-        } else if (isPreferenceEnabled(FPref.UI_SHOW_ACTIONABLE_HIGHLIGHTS) && matchUI.isWeaklySelectable(getCard())) {
+        } else if (isPreferenceEnabled(FPref.UI_SHOW_ACTIONABLE_HIGHLIGHTS) && matchUI.isActionable(getCard())) {
             innerBorder = parseActionableHighlightColor();
         }
         if (innerBorder != null) {

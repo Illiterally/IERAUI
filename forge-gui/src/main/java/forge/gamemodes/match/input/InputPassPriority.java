@@ -28,12 +28,13 @@ import forge.game.player.actions.PassPriorityAction;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.StackItemView;
 import forge.game.zone.ZoneType;
+import forge.game.undo.UndoManager;
 import forge.gamemodes.match.DeclineScope;
 import forge.gamemodes.match.SuggestionType;
 import forge.gamemodes.match.YieldController;
 import forge.gamemodes.match.YieldUpdate;
-import forge.gamemodes.net.server.FServerManager;
-import forge.gamemodes.net.server.FServerManager.AfkTimeout;
+import forge.gamemodes.net.server.HostingServer;
+import forge.gamemodes.net.server.HostingServer.AfkTimeout;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.util.collect.FCollectionView;
 import forge.model.FModel;
@@ -71,16 +72,8 @@ public class InputPassPriority extends InputSyncronizedBase {
     }
 
     @Override
-    protected void onStop() {
-        getController().clearActionableCards();
-    }
-
-    @Override
     public void showAndWait() {
-        final FServerManager server = FServerManager.getInstance();
-        final AfkTimeout timeout = server != null
-                ? server.armAfkTimeout(getController(), this)
-                : AfkTimeout.NOOP;
+        final AfkTimeout timeout = HostingServer.armAfkTimeout(getController(), this);
         try {
             super.showAndWait();
         } finally {
@@ -138,6 +131,13 @@ public class InputPassPriority extends InputSyncronizedBase {
         showNormalPrompt();
     }
 
+    /** Ends this prompt without an action; the game thread then performs a pending undo. */
+    public void restartPrompt() {
+        if (isFinished()) return;
+        chosenSa = new ArrayList<>();   // non-null: no end-turn auto-pass, no awaitNextInput
+        stop();
+    }
+
     private void showYieldSuggestionPrompt() {
         priorityHelpText = null;
         // State may have flipped between the initial check and now (e.g. async multiplayer click).
@@ -165,11 +165,16 @@ public class InputPassPriority extends InputSyncronizedBase {
         getController().getGui().alertUser();
     }
 
+    @Override
+    protected List<CardView> getActionable() {
+        return pendingSuggestion == null ? getController().getActionableCards(false, null) : List.of();
+    }
+
     private void showNormalPrompt() {
         pendingSuggestion = null;
         pendingSuggestionMessage = null;
 
-        getController().pushActionableCards(false);
+        showSelection();
         chosenSa = null;
         Localizer localizer = Localizer.getInstance();
         String passLabel = localizer.getMessage("lblOK");
@@ -185,8 +190,11 @@ public class InputPassPriority extends InputSyncronizedBase {
             promptCard = prompt.sourceCard();
         }
         showMessage(message, promptCard);
-        if (getController().canUndoLastAction()) { //allow undoing with cancel button if can undo last action
-            getController().getGui().updateButtons(getOwner(), passLabel, localizer.getMessage("lblUndo") + " (" + getController().getGame().getStack().getUndoStackSize() + ")", true, true, true);
+        if (getController().canUndoLastAction()) {
+            final UndoManager um = getController().getGame().getUndoManager();
+            final int n = um.undosLeft();
+            final String undoLabel = localizer.getMessage("lblUndo") + (n > 0 ? " (" + n + ")" : "");
+            getController().getGui().updateButtons(getOwner(), passLabel, undoLabel, true, true, true, true);
         }
         else { //otherwise allow ending turn with cancel button
             getController().getGui().updateButtons(getOwner(), passLabel, localizer.getMessage("lblEndTurn"), true, true, true);
@@ -225,7 +233,7 @@ public class InputPassPriority extends InputSyncronizedBase {
         FCollectionView<StackItemView> stack = gv.getStack();
         if (stack != null && !stack.isEmpty()) return false;
         PlayerView currentTurn = gv.getPlayerTurn();
-        if (currentTurn != null && currentTurn.equals(pv)) {
+        if (pv.sharesTeamWith(currentTurn)) {
             // Always suppress on player's first turn (no lands/mana yet)
             if (gv.getTurn() <= gv.getPlayers().size()) return false;
             if (getController().getYieldController().getBoolPref(FPref.YIELD_SUPPRESS_ON_OWN_TURN)) return false;
@@ -268,7 +276,7 @@ public class InputPassPriority extends InputSyncronizedBase {
                     boolean atOrPast = YieldController.isPriorityAtOrPastMarker(
                             getGameView(), self, PhaseType.UPKEEP);
                     yc.setMarker(self, PhaseType.UPKEEP, atOrPast);
-                    getController().getGui().applyYieldUpdate(
+                    if (getController().isRemoteClient()) getController().getGui().applyYieldUpdate(
                             new YieldUpdate.SetMarker(self, PhaseType.UPKEEP, atOrPast));
                 }
             }

@@ -1,14 +1,14 @@
-# IERAUI 0.1.20 setup
+# IERAUI 0.1.21 setup
 
-This local update targets **Forge Desktop 2.0.15 on Windows** and requires Java 17 or later. It is a UI Addon built on Forge's rules simulation, card implementations, and deck tools. Forge's contributors supply the underlying program and content.
+This update targets **Forge Desktop 2.0.16 on Windows** and requires Java 17 or later. It is a UI Addon built on Forge's rules simulation, card implementations, and deck tools. Forge's contributors supply the underlying program and content.
 
 ## Fresh installation
 
-1. Extract the official [Forge 2.0.15 release](https://github.com/Card-Forge/forge/releases/tag/forge-2.0.15) into a new folder.
-2. Extract the IERAUI 0.1.20 addon payload into that folder, alongside `forge-gui-desktop-2.0.15-jar-with-dependencies.jar`.
+1. Extract the official [Forge 2.0.16 release](https://github.com/Card-Forge/forge/releases/tag/forge-2.0.16) into a new folder.
+2. Extract the IERAUI 0.1.21 addon payload into that folder, alongside `forge-gui-desktop-2.0.16-jar-with-dependencies.jar`.
 3. Run `Play IERAUI.cmd`. The launcher checks that the original Forge JAR matches the tested release and enables the addon.
 
-The local candidate has not been published to GitHub. The public IERAUI v0.1.12 package targets the older Forge 2.0.14 release and is not interchangeable with this update.
+Download this release from https://github.com/Illiterally/IERAUI/releases/tag/v0.1.21. Older addons are not interchangeable with this update.
 
 ## Existing installation
 
@@ -43,3 +43,9 @@ The personal deck **Timey Wimey** uses the official Doctor Who precon list, with
 ## Support and attribution
 
 For an addon problem, report the IERAUI and Forge versions and the steps that led to it. The addon is independent of the Forge project. Original Forge notices and the GPL license are retained; see `NOTICE.md` and `LICENSE.txt`.
+
+## Online multiplayer
+
+Both players must use Forge 2.0.16. Use IERAUI 0.1.21 on both computers for the same UI. Open Forge’s Online Multiplayer lobby, host a game and have the other player join the host address. Internet connections still need the normal Forge networking setup; the addon does not bypass firewalls or provide a server.
+
+The launcher creates portable defaults only when files are missing. The ZIP never includes files under your existing data directory and does not replace an existing forge.profile.properties.

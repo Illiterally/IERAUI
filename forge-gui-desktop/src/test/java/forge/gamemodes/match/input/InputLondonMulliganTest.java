@@ -1,6 +1,7 @@
 package forge.gamemodes.match.input;
 
 import java.util.List;
+import forge.gamemodes.match.Selection;
 
 import forge.game.Game;
 import forge.game.GameView;
@@ -85,22 +86,22 @@ public class InputLondonMulliganTest {
     public void manualChoiceExposesHandAndCanBeUndoneBeforeConfirming() {
         final InputLondonMulligan input = new InputLondonMulligan(controller, player, 1);
         input.showMessage();
-        verify(gui).setSelectables(List.of(first.getView(), second.getView(), third.getView()), 1, 1);
+        verify(gui).setSelection(argThat(s -> s.cards().equals(List.of(first.getView(), second.getView(), third.getView())) && s.min() == 1 && s.max() == 1));
         verify(gui).updateButtons(playerView, "Return selected", "Auto-pick & return", false, true, true);
         Assert.assertFalse(input.selectCard(card(), null, null));
         Assert.assertTrue(input.selectCard(second, null, null));
         Assert.assertEquals(input.getSelectedCards().getFirst(), second);
         verify(gui).updateButtons(playerView, "Return selected", "Auto-pick & return", true, false, true);
         verify(gui).showPromptMessage(eq(playerView), contains("Selected: 1 / 1"), isNull());
-        verify(gui, never()).clearSelectables();
+        verify(gui, never()).setSelection(Selection.NONE);
         input.selectCard(second, null, null);
         Assert.assertTrue(input.getSelectedCards().isEmpty());
         input.selectCard(third, null, null);
         input.selectButtonOK();
         Assert.assertEquals(input.getSelectedCards().size(), 1);
         Assert.assertEquals(input.getSelectedCards().getFirst(), third);
-        verify(gui).clearSelectables();
-        verify(gui, atLeastOnce()).setHighlighted(List.of(third.getView()), false);
+        verify(gui, atLeastOnce()).setSelection(Selection.NONE);
+        verify(gui, atLeastOnce()).setSelection(argThat(s -> s.chosen().contains(third.getView())));
     }
 
     @Test
@@ -113,7 +114,7 @@ public class InputLondonMulliganTest {
         Assert.assertEquals(input.getSelectedCards().get(0), third);
         Assert.assertEquals(input.getSelectedCards().get(1), first);
         Assert.assertFalse(input.getSelectedCards().contains(second));
-        verify(gui).clearSelectables();
+        verify(gui, atLeastOnce()).setSelection(Selection.NONE);
     }
 
     @Test
@@ -122,8 +123,8 @@ public class InputLondonMulliganTest {
         input.showMessage();
         input.selectCard(second, null, null);
         input.stop();
-        verify(gui).clearSelectables();
-        verify(gui).setHighlighted(List.of(second.getView()), false);
+        verify(gui, atLeastOnce()).setSelection(Selection.NONE);
+        verify(gui, atLeastOnce()).setSelection(argThat(s -> s.chosen().contains(second.getView())));
     }
 
     @Test
@@ -132,10 +133,10 @@ public class InputLondonMulliganTest {
         final InputLondonMulligan input = new InputLondonMulligan(controller, player, 1);
         input.showMessage();
         verify(gui).updateButtons(playerView, "OK", "Auto", false, true, true);
-        verify(gui, never()).setSelectables(any(), anyInt(), anyInt());
+        verify(gui, never()).setSelection(argThat(s -> !s.cards().isEmpty()));
         input.selectCard(first, null, null);
         input.selectButtonOK();
         Assert.assertEquals(input.getSelectedCards().getFirst(), first);
-        verify(gui, never()).clearSelectables();
+        verify(gui, never()).setSelection(Selection.NONE);
     }
 }
