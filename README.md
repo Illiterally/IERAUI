@@ -1,6 +1,6 @@
 # Illiterally's Enhanced Rules Analysis UI (IERAUI)
 
-**Local update: IERAUI 0.1.14 on Forge Desktop 2.0.15.** This branch preserves the existing UI addon and Commander cue on the September 28, 2026 Forge release. Public v0.1.12 below remains the older Forge 2.0.14 package. See [current setup](ieraui/docs/SETUP.md) and [build instructions](ieraui/docs/BUILD.md).
+**Local update: IERAUI 0.1.20 on Forge Desktop 2.0.15.** AI decisions use cooperative timeouts without leaving evaluation threads running; blocking checks reject impossible pairs earlier. Results distinguish actual overkill from unblocked attacking power that never dealt damage after a first-strike finish. Bestow creatures now refresh their displayed power/toughness when they stop being Auras. Choosing **Other** for an X mana cost shows an auto-pay maximum and **Use max** to fill it in before normal payment. Local player names, avatars, and Human/AI choices persist per seat. Deck-list restoration, preference backups, deck quantity menus, and the sideboarding exit fix are included. Public v0.1.12 below remains the older Forge 2.0.14 package. See [current setup](ieraui/docs/SETUP.md) and [build instructions](ieraui/docs/BUILD.md).
 
 **A UI Addon for Forge — an Illiterally Custom.**
 

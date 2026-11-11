@@ -590,7 +590,11 @@ public class VLobby implements ILobbyView {
     }
 
     void removePlayer(final int index) {
+        final boolean restoreSeats = forge.gui.EnhancedRulesUi.isEnabled() && !lobby.isAllowNetworking()
+                && lobby.mayRemove(index) && lobby.getSlot(index) != null;
+        if (restoreSeats) { cachedDeckChoosers.clear(); }
         lobby.removeSlot(index);
+        if (restoreSeats) { update(true); }
     }
 
     boolean hasVariant(final GameType variant) {
@@ -661,6 +665,18 @@ public class VLobby implements ILobbyView {
         refreshGeneratedDecks = false;
         final DeckType type = mainChooser.getSelectedDeckType();
         final Deck deck = mainChooser.getDeck();
+        if (deck == null && forge.gui.EnhancedRulesUi.isEnabled()) {
+            // A missing/filtered saved deck is not consent to substitute row one.
+            if (playerIndex < activePlayersNum && lobby.mayEdit(playerIndex)) {
+                if (isCommanderDeck) {
+                    getPlayerPanel(playerIndex).setCommanderDeckSelectorButtonText("Select commander deck");
+                } else {
+                    getPlayerPanel(playerIndex).setDeckSelectorButtonText("Select deck");
+                }
+                fireDeckChangeListener(playerIndex, null);
+            }
+            return;
+        }
         // something went wrong, clear selection to prevent error loop
         if (deck == null) {
             mainChooser.getLstDecks().setSelectedIndex(0);

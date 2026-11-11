@@ -1,6 +1,7 @@
 package forge.gui;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.GridLayout;
 import java.awt.event.FocusAdapter;
@@ -69,6 +70,7 @@ public class DualListBox<T> extends FDialog {
     private final int targetRemainingSourcesMax;
 
     private boolean sideboardingMode = false;
+    private boolean accepted;
     private boolean showCard = true;
 
     private final CMatchUI matchUI;
@@ -152,7 +154,14 @@ public class DualListBox<T> extends FDialog {
         okButton = new FButton(Localizer.getInstance().getMessage("lblOK"));
         okButton.addActionListener(e -> _finish());
         autoButton = new FButton(Localizer.getInstance().getMessage("lblAuto"));
-        autoButton.addActionListener(e -> { _addAll(); _finish(); });
+        autoButton.addActionListener(e -> {
+            if (sideboardingMode) {
+                setVisible(false); // Keep the original deck, discarding this dialog's edits.
+            } else {
+                _addAll();
+                _finish();
+            }
+        });
 
         rememberDecisionCheckBox = new FCheckBox(Localizer.getInstance().getMessage("lblAlwaysUseThisOrder"));
         rememberDecisionCheckBox.setToolTipText(Localizer.getInstance().getMessage("lblAlwaysUseThisOrderTooltip"));
@@ -254,7 +263,10 @@ public class DualListBox<T> extends FDialog {
         if (sideboardingMode) {
             addAllButton.setVisible(false);
             removeAllButton.setVisible(false);
-            autoButton.setEnabled(false);
+            autoButton.setText(Localizer.getInstance().getMessage("lblKeepDeck"));
+            autoButton.setEnabled(true);
+            okButton.setPreferredSize(new Dimension(120, 32));
+            autoButton.setPreferredSize(new Dimension(120, 32));
             selectOrder.setText(Localizer.getInstance().getMessage("lblSideboard") + String.format(" (%d):", sourceListModel.getSize()));
             orderedLabel.setText(Localizer.getInstance().getMessage("ttMain") + String.format(" (%d):", destListModel.getSize()));
         }
@@ -351,6 +363,7 @@ public class DualListBox<T> extends FDialog {
 
     public List<T> getOrderedList() {
         this.setVisible(false);
+        if (sideboardingMode && !accepted) { return null; }
         return destListModel.model;
     }
 
@@ -483,7 +496,7 @@ public class DualListBox<T> extends FDialog {
         boolean canRemove = destListModel.getSize() != 0;
         boolean targetReached = anySize || targetRemainingSourcesMin <= sourceListModel.getSize() && targetRemainingSourcesMax >= sourceListModel.getSize();
 
-        autoButton.setEnabled(targetRemainingSourcesMax == 0 && !targetReached && !sideboardingMode);
+        autoButton.setEnabled(sideboardingMode || targetRemainingSourcesMax == 0 && !targetReached);
 
         addButton.setEnabled(canAdd);
         addAllButton.setEnabled(canAdd);
@@ -497,6 +510,7 @@ public class DualListBox<T> extends FDialog {
     }
 
     private void _finish() {
+        accepted = true;
         this.setVisible(false);
     }
 }

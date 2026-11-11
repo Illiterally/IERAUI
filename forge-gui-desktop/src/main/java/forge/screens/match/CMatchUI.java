@@ -1353,6 +1353,14 @@ public final class CMatchUI
     }
 
     @Override
+    public boolean supportsManaXInput() { return true; }
+
+    @Override
+    public Integer getManaXInput(final String title, final int min, final int max, final Integer maximum) {
+        return forge.gui.ManaXInput.show(title, min, max, maximum);
+    }
+
+    @Override
     public <T> List<T> getChoices(final String message, final int min, final int max, final List<T> choices, final List<T> selected, final FSerializableFunction<T, String> display) {
         /*if ((choices != null && !choices.isEmpty() && choices.iterator().next() instanceof GameObject) || selected instanceof GameObject) {
             System.err.println("Warning: GameObject passed to GUI! Printing stack trace.");

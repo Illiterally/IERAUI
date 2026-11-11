@@ -245,7 +245,8 @@ public class GuiChoose {
             dual.setSideboardMode(sideboardingMode);
             dual.setTitle(title);
             dual.pack();
-            dual.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+            dual.setDefaultCloseOperation(sideboardingMode
+                    ? WindowConstants.HIDE_ON_CLOSE : WindowConstants.DO_NOTHING_ON_CLOSE);
             if (matchUI != null && referenceCard != null) {
                 matchUI.setCard(referenceCard);
             }

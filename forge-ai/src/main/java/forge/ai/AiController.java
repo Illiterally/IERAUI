@@ -17,6 +17,8 @@
  */
 package forge.ai;
 
+import java.util.concurrent.TimeUnit;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
@@ -69,7 +71,6 @@ import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -1596,13 +1597,11 @@ public class AiController {
             Sentry.captureMessage(ex.getMessage() + "\nAssertionError [verifyTransitivity]: " + assertex);
         }
 
-        FutureTask<SpellAbility> future = new FutureTask<>(() -> {
+        return AiEvaluation.run(TimeUnit.SECONDS.toMillis(game.getAITimeout()), () -> {
             //avoid ComputerUtil.aiLifeInDanger in loops as it slows down a lot.. call this outside loops will generally be fast...
             boolean isLifeInDanger = useLivingEnd && ComputerUtil.aiLifeInDanger(player, true, 0);
             for (final SpellAbility sa : ComputerUtilAbility.getOriginalAndAltCostAbilities(all, player)) {
-                if (Thread.currentThread().isInterrupted()) {
-                    break;
-                }
+                AiEvaluation.check();
 
                 // Don't add Counterspells to the "normal" playcard lookups
                 if (skipCounter && sa.getApi() == ApiType.Counter) {
@@ -1662,10 +1661,13 @@ public class AiController {
                     sa.setLastStateGraveyard(game.getLastStateGraveyard());
                 }
                 //override decision for living end player
-                AiPlayDecision opinion = useLivingEnd && AiPlayDecision.WillPlay.equals(aiPlayDecision) ? aiPlayDecision : canPlayAndPayFor(sa);
-
-                // reset LastStateBattlefield
-                sa.clearLastState();
+                AiPlayDecision opinion;
+                try {
+                    opinion = useLivingEnd && AiPlayDecision.WillPlay.equals(aiPlayDecision) ? aiPlayDecision : canPlayAndPayFor(sa);
+                } finally {
+                    // Also clear references when a cooperative timeout unwinds.
+                    sa.clearLastState();
+                }
                 // PhaseHandler ph = game.getPhaseHandler();
                 // System.out.printf("Ai thinks '%s' of %s -> %s @ %s %s >>> \n", opinion, sa.getHostCard(), sa, Lang.getInstance().getPossesive(ph.getPlayerTurn().getName()), ph.getPhase());
 
@@ -1678,44 +1680,7 @@ public class AiController {
             }
 
             return null;
-        });
-        Thread t = new Thread(future, "Game AI Eval");
-        t.setDaemon(true);
-        t.start();
-        try {
-            return future.get(game.getAITimeout(), TimeUnit.SECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            e.printStackTrace();
-            if (e instanceof TimeoutException) {
-                // log where the eval thread currently is - each timeout doubles as a
-                // profiler sample for diagnosing remaining AI slowdowns from user logs
-                StringBuilder sb = new StringBuilder("AI eval thread at timeout:");
-                StackTraceElement[] evalStack = t.getStackTrace();
-                for (int i = 0; i < Math.min(30, evalStack.length); i++) {
-                    sb.append("\n\tat ").append(evalStack[i]);
-                }
-                System.out.println(sb);
-            }
-            // ask the eval thread to exit at the next SpellAbility check first: a brutal
-            // Thread.stop() mid-evaluation can leave partially mutated shared state behind
-            future.cancel(true);
-            try {
-                t.join(2000); //2 seconds wait
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
-            if (t.isAlive()) {
-                // last resort, see #8302: the eval thread may be stuck inside a single
-                // evaluation or an infinite loop and never reach the cooperative exit
-                try {
-                    t.stop();
-                } catch (UnsupportedOperationException | NoSuchMethodError ex) {
-                    // Stop support: dropped by Android and Java 20 / 26 removed it completely - so sadly thread will keep running
-                }
-            }
-            // TODO mark some as skipped to increase chance to find something playable next priority
-            return null;
-        }
+        }, null);
     }
 
     public CardCollection chooseCardsToDelve(int genericCost, CardCollection grave) {

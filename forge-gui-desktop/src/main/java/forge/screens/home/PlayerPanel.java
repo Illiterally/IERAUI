@@ -29,6 +29,7 @@ import forge.game.GameType;
 import forge.gamemodes.match.LobbySlot;
 import forge.gamemodes.match.LobbySlotType;
 import forge.gui.UiCommand;
+import forge.gui.EnhancedRulesUi;
 import forge.gui.framework.FScreen;
 import forge.gui.util.SOptionPane;
 import forge.item.PaperCard;
@@ -308,8 +309,13 @@ public class PlayerPanel extends FPanel {
             if (source instanceof FTextField) { // the text box
                 final FTextField nField = (FTextField)source;
                 final String newName = nField.getText().trim();
+                if (EnhancedRulesUi.isEnabled() && !allowNetworking && newName.isBlank()) {
+                    setPlayerName(playerName);
+                    return;
+                }
                 if (index == 0 && !StringUtils.isBlank(newName)
-                        && StringUtils.isAlphanumericSpace(newName) && prefs.getPref(FPref.PLAYER_NAME) != newName) {
+                        && (EnhancedRulesUi.isEnabled() || StringUtils.isAlphanumericSpace(newName))
+                        && !prefs.getPref(FPref.PLAYER_NAME).equals(newName)) {
                     prefs.setPref(FPref.PLAYER_NAME, newName);
                     prefs.save();
                 }
@@ -644,6 +650,9 @@ public class PlayerPanel extends FPanel {
                 return;
             }
             txtPlayerName.setText(newName);
+            if (EnhancedRulesUi.isEnabled() && !allowNetworking) {
+                lobby.firePlayerChangeListener(index);
+            }
 
             if (index == 0) {
                 prefs.setPref(FPref.PLAYER_NAME, newName);
@@ -698,7 +707,7 @@ public class PlayerPanel extends FPanel {
 
         avatarLabel.setToolTipText(localizer.getMessage("ttlblAvatar"));
         avatarLabel.addFocusListener(avatarFocusListener);
-        avatarLabel.setCommand((UiCommand) () -> {
+        final UiCommand selectAvatar = () -> {
             lobby.changePlayerFocus(index);
             avatarLabel.requestFocusInWindow();
 
@@ -713,13 +722,14 @@ public class PlayerPanel extends FPanel {
             aSel.setVisible(true);
             aSel.dispose();
 
-            if (index < 2) {
+            if (index < 2 && !(EnhancedRulesUi.isEnabled() && !allowNetworking)) {
                 lobby.updateAvatarPrefs();
             }
 
             lobby.firePlayerChangeListener(index);
-        });
-        avatarLabel.setRightClickCommand((UiCommand) () -> {
+        };
+        avatarLabel.setCommand(selectAvatar);
+        avatarLabel.setRightClickCommand(EnhancedRulesUi.isEnabled() && !allowNetworking ? selectAvatar : (UiCommand) () -> {
             lobby.changePlayerFocus(index);
             avatarLabel.requestFocusInWindow();
 
@@ -876,7 +886,10 @@ public class PlayerPanel extends FPanel {
     }
     public void setPlayerName(final String string) {
         playerName = string;
-        txtPlayerName.setText(string);
+        // A deck/format refresh must not replace a name while it is being edited.
+        if (!EnhancedRulesUi.isEnabled() || !txtPlayerName.isFocusOwner()) {
+            txtPlayerName.setText(string);
+        }
     }
 
     public int getAvatarIndex() {

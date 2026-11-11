@@ -32,6 +32,16 @@ public class ForgePreferences extends AbstractPreferences<ForgePreferences.FPref
      */
     public enum FPref implements AbstractPreferences.IPref {
         PLAYER_NAME (""),
+        LOCAL_PLAYER_1_NAME(""),
+        LOCAL_PLAYER_2_NAME(""),
+        LOCAL_PLAYER_3_NAME(""),
+        LOCAL_PLAYER_4_NAME(""),
+        LOCAL_PLAYER_5_NAME(""),
+        LOCAL_PLAYER_6_NAME(""),
+        LOCAL_PLAYER_7_NAME(""),
+        LOCAL_PLAYER_8_NAME(""),
+        LOCAL_PLAYER_TYPES("LOCAL,AI"),
+        LOCAL_PLAYER_COUNT("2"),
 
         // Desktop only
         UI_COMPACT_MAIN_MENU ("false"),
@@ -419,7 +429,11 @@ public class ForgePreferences extends AbstractPreferences<ForgePreferences.FPref
 
     /** Instantiates a ForgePreferences object. */
     public ForgePreferences() {
-        super(ForgeConstants.MAIN_PREFS_FILE, FPref.class);
+        this(ForgeConstants.MAIN_PREFS_FILE);
+    }
+
+    ForgePreferences(final String filename) {
+        super(filename, FPref.class);
     }
 
     /** Parse the custom log types preference into a Set. */

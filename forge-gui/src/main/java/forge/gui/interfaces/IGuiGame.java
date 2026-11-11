@@ -184,6 +184,13 @@ public interface IGuiGame {
     Integer getInteger(String message, int min, int max, boolean sortDesc);
     Integer getInteger(String message, int min, int max, int cutoff);
 
+    // Local desktop capability; old/mobile/network clients retain their existing prompts.
+    default boolean supportsManaXInput() { return false; }
+
+    default Integer getManaXInput(String title, int min, int max, Integer maximum) {
+        return getInteger(title, min, max, min + 9);
+    }
+
     /**
      * Convenience for getChoices(message, 0, 1, choices).
      *

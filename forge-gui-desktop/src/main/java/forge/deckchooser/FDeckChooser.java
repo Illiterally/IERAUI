@@ -10,6 +10,7 @@ import forge.gamemodes.quest.QuestEvent;
 import forge.gamemodes.quest.QuestEventChallenge;
 import forge.gamemodes.quest.QuestUtil;
 import forge.gui.FThreads;
+import forge.gui.EnhancedRulesUi;
 import forge.gui.UiCommand;
 import forge.item.PaperCard;
 import forge.itemmanager.DeckManager;
@@ -62,6 +63,7 @@ public class FDeckChooser extends JPanel implements IDecksComboBoxListener {
     private String lastLoadedUrlDeckName;
     private UiCommand deckSelectionCommand;
     private boolean updatingDeckPool;
+    private boolean restoringSavedState;
 
     private boolean isAi;
 
@@ -410,7 +412,7 @@ public class FDeckChooser extends JPanel implements IDecksComboBoxListener {
     }
 
     private void handleDeckSelection() {
-        if (updatingDeckPool) {
+        if (updatingDeckPool || restoringSavedState) {
             return;
         }
         syncUrlFieldWithSelectedDeck();
@@ -788,6 +790,9 @@ public class FDeckChooser extends JPanel implements IDecksComboBoxListener {
     private final String SELECTED_DECK_DELIMITER = "::";
 
     public void saveState() {
+        if (restoringSavedState || (EnhancedRulesUi.isEnabled() && lstDecks.getSelectedItems().isEmpty())) {
+            return;
+        }
         if (stateSetting == null) {
             throw new NullPointerException("State setting missing. Specify first using the initialize() method.");
         }
@@ -848,6 +853,23 @@ public class FDeckChooser extends JPanel implements IDecksComboBoxListener {
     }
 
     public void restoreSavedState() {
+        if (EnhancedRulesUi.isEnabled() && stateSetting != null) {
+            // Rebuilding the list selects its first row temporarily. Do not let
+            // that callback overwrite the saved deck before it is reselected.
+            restoringSavedState = true;
+            try {
+                final String savedState = prefs.getPref(stateSetting);
+                refreshDecksList(getDeckTypeFromSavedState(savedState), true, null);
+                if (!savedState.isBlank()
+                        && !lstDecks.setSelectedStrings(getSelectedDecksFromSavedState(savedState))) {
+                    lstDecks.setSelectedIndices(new Integer[0]);
+                }
+            } finally {
+                restoringSavedState = false;
+            }
+            handleDeckSelection();
+            return;
+        }
         final DeckType oldDeckType = selectedDeckType;
         if (stateSetting == null) {
             //if can't restore saved state, just refresh deck list
@@ -914,7 +936,7 @@ public class FDeckChooser extends JPanel implements IDecksComboBoxListener {
             if (StringUtils.isBlank(savedState)) {
                 return new ArrayList<>();
             }
-            final String[] parts = savedState.split(";", -1);
+            final String[] parts = savedState.split(";", 2);
             return Arrays.asList(parts[1].split(SELECTED_DECK_DELIMITER));
         } catch (final Exception ex) {
             System.err.println(ex + " [savedState=" + savedState + "]");

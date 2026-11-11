@@ -251,33 +251,38 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         // Limited doesn't have a sideboard max, so let the Main min take care of things.
         final int sbMax = sbRange == null ? combinedDeckSize : sbRange.getMaximum();
 
-        List<PaperCard> newMain = null;
-
         // Skip sideboard loop if there are no sideboarding opportunities
         if (sbSize == 0 && mainSize == deckMinSize) {
             return null;
         }
 
-        // conformance should not be checked here
         final boolean conform = FModel.getPreferences().getPrefBoolean(FPref.ENFORCE_DECK_LEGALITY);
-        do {
-            if (newMain != null) {
-                String errMsg;
-                if (newMain.size() < deckMinSize) {
-                    errMsg = TextUtil.concatNoSpace(localizer.getMessage("lblTooFewCardsMainDeck", deckMinSize));
-                } else {
-                    errMsg = TextUtil.concatNoSpace(localizer.getMessage("lblTooManyCardsSideboard", sbMax));
-                }
-                getGui().showErrorDialog(errMsg, localizer.getMessage("lblInvalidDeck"));
+        final List<PaperCard> originalMain = main.toFlatList();
+        CardPool editingMain = main;
+        CardPool editingSideboard = sideboard;
+        while (true) {
+            final List<PaperCard> response = getGui().sideboard(editingSideboard, editingMain, message);
+            // Keep Deck, Escape and Close discard pending swaps.
+            final List<PaperCard> newMain = response == null ? originalMain : response;
+            final int newSideboardSize = combinedDeckSize - newMain.size();
+            if (conform && newMain.size() < deckMinSize) {
+                getGui().showErrorDialog(localizer.getMessage("lblTooFewCardsMainDeck", deckMinSize),
+                        localizer.getMessage("lblInvalidDeck"));
+            } else if (!conform || newSideboardSize <= sbMax || getGui().showConfirmDialog(
+                    localizer.getMessage("lblOversizedSideboardConfirm", newSideboardSize, sbMax),
+                    localizer.getMessage("lblOversizedSideboardTitle"),
+                    localizer.getMessage("lblContinueAnyway"), localizer.getMessage("lblEditSideboard"), false)) {
+                // An explicit exception applies to this game's sideboarding only.
+                // Leave the saved deck and global legality preference untouched.
+                return HashMultiset.create(newMain).equals(HashMultiset.create(originalMain)) ? null : newMain;
             }
-            // Sideboard rules have changed for M14, just need to consider min
-            // maindeck and max sideboard sizes
-            // No longer need 1:1 sideboarding in non-limited formats
-            List<PaperCard> resp = getGui().sideboard(sideboard, main, message);
-            newMain = Objects.requireNonNullElse(resp, main.toFlatList());
-        } while (conform && (newMain.size() < deckMinSize || combinedDeckSize - newMain.size() > sbMax));
-
-        return newMain;
+            // Keep the proposed swaps when returning to Edit Sideboard.
+            editingMain = new CardPool();
+            editingMain.addAllFlat(newMain);
+            editingSideboard = new CardPool(main);
+            editingSideboard.addAll(sideboard);
+            editingSideboard.removeAllFlat(newMain);
+        }
     }
 
     @Override
@@ -392,6 +397,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         if ("NumTimes".equals(announce)) {
             return getGui().getInteger(localizer.getMessage("lblHowManyTimesToPay", ability.getPayCosts().getTotalMana(),
                     host.getTranslatedName()), min, max, min + 9);
+        }
+        if (forge.gui.EnhancedRulesUi.isEnabled() && getGui().supportsManaXInput()
+                && "X".equals(announce) && cost != null && ability.costHasManaX()) {
+            final int lower = min;
+            final int upper = max;
+            return ManaXChoice.choose(getGui(), localizer.getMessage("lblChooseAnnounceForCard", announceTitle,
+                    host.getTranslatedName()), min, max, () -> MaximumManaX.calculate(ability, lower, upper));
         }
         return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announceTitle,
                 host.getTranslatedName()), min, max, min + 9);

@@ -122,8 +122,12 @@ public enum VSubmenuAvatars implements IVSubmenu<CSubmenuAvatars> {
         lblAvatarAI.setIcon(FSkin.getAvatars().get(aiIndex));
         lblAvatarHuman.setIcon(FSkin.getAvatars().get(humanIndex));
 
-        FModel.getPreferences().setPref(FPref.UI_AVATARS, humanIndex + "," + aiIndex);
-        FModel.getPreferences().save();
+        // Rendering a fallback for a skin without this avatar must not erase the
+        // saved selection. Only the explicit avatar picker below writes it.
+        if (!forge.gui.EnhancedRulesUi.isEnabled()) {
+            FModel.getPreferences().setPref(FPref.UI_AVATARS, humanIndex + "," + aiIndex);
+            FModel.getPreferences().save();
+        }
     }
 
     @SuppressWarnings("serial")
@@ -151,7 +155,7 @@ public enum VSubmenuAvatars implements IVSubmenu<CSubmenuAvatars> {
                 indices[0] = String.valueOf(index0);
             }
 
-            FModel.getPreferences().setPref(FPref.UI_AVATARS, indices[0] + "," + indices[1]);
+            FModel.getPreferences().setPref(FPref.UI_AVATARS, String.join(",", indices));
             FModel.getPreferences().save();
         };
 

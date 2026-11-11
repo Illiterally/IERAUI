@@ -6756,6 +6756,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
         removeChangedCardKeywords(bestowTimestamp, 0, updateView);
         removeChangedCardTypes(bestowTimestamp, 0, updateView);
         bestowTimestamp = -1;
+        if (updateView) {
+            // As an Aura, counter updates can cache 0/0 in the view. Restore the
+            // creature's current stats even when no continuous effect changes them.
+            updatePTforView();
+        }
     }
 
     public final boolean isBestowed() {

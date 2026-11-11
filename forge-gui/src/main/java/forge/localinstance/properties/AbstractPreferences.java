@@ -25,6 +25,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Objects;
+import java.nio.file.Path;
 
 import forge.game.GameType;
 import forge.util.FileUtil;
@@ -38,9 +41,12 @@ import forge.util.TextUtil;
 public abstract class AbstractPreferences<T extends Enum<T> & IPreferences.IPref> implements IPreferences<T> {
     private final Map<T, String> preferenceValues;
     private final String filename;
+    private final Map<T, String> savedValues;
+    private boolean resetRequested;
 
     public AbstractPreferences(final String filename0, final Class<T> clasz) {
         preferenceValues = new EnumMap<>(clasz);
+        savedValues = new EnumMap<>(clasz);
         filename = filename0;
 
         final List<String> lines = FileUtil.readFile(filename);
@@ -50,7 +56,7 @@ public abstract class AbstractPreferences<T extends Enum<T> & IPreferences.IPref
                 continue;
             }
 
-            final String[] split = line.split("=");
+            final String[] split = line.split("=", 2);
             final T pref = valueOf(split[0]);
 
             if (null == pref) {
@@ -64,13 +70,39 @@ public abstract class AbstractPreferences<T extends Enum<T> & IPreferences.IPref
                 this.setPref(pref, "");
             }
         }
+        savedValues.putAll(preferenceValues);
     }
 
     protected abstract T[] getEnumValues();
     protected abstract T valueOf(String name);
 
     @Override
-    public void save() {
+    public synchronized void save() {
+        if (forge.gui.EnhancedRulesUi.isEnabled()) {
+            final Map<String, String> defaults = new LinkedHashMap<>();
+            final Map<String, String> changes = new LinkedHashMap<>();
+            for (final T key : getEnumValues()) {
+                final String value = getPref(key);
+                defaults.put(key.name(), getPrefDefault(key));
+                final String previous = savedValues.getOrDefault(key, getPrefDefault(key));
+                if (resetRequested || !Objects.equals(value, previous)) {
+                    changes.put(key.name(), value);
+                }
+            }
+            try {
+                final Map<String, String> merged = PreferenceFileStore.save(Path.of(filename), defaults, changes);
+                for (final T key : getEnumValues()) {
+                    preferenceValues.put(key, merged.get(key.name()));
+                }
+                savedValues.clear();
+                savedValues.putAll(preferenceValues);
+                resetRequested = false;
+            } catch (final IOException ex) {
+                // Retain pending changes so the next save can retry.
+                ex.printStackTrace();
+            }
+            return;
+        }
         BufferedWriter writer = null;
         try {
             writer = new BufferedWriter(new FileWriter(filename));
@@ -92,17 +124,18 @@ public abstract class AbstractPreferences<T extends Enum<T> & IPreferences.IPref
     }
 
     @Override
-    public final void reset() {
+    public final synchronized void reset() {
         this.preferenceValues.clear();
+        resetRequested = true;
     }
 
     @Override
-    public final void setPref(final T q0, final String s0) {
+    public final synchronized void setPref(final T q0, final String s0) {
         preferenceValues.put(q0, s0);
     }
 
     @Override
-    public final String getPref(final T fp0) {
+    public final synchronized String getPref(final T fp0) {
         String val;
 
         val = preferenceValues.get(fp0);

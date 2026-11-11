@@ -1,4 +1,4 @@
-# Build IERAUI 0.1.14 for Forge 2.0.15
+# Build IERAUI 0.1.20 for Forge 2.0.15
 
 This local update is based on official Forge tag `forge-2.0.15`, commit `4ec5f1a2c32fa90ecb983a72b9eb47aa5c5d7676`, and retains the IERAUI desktop UI changes, including the Commander availability cue.
 
@@ -12,7 +12,7 @@ From this source checkout:
 ./ieraui/scripts/Build-Addon.ps1 -Maven /path/to/mvn.cmd -MavenRepository /path/to/cache -OutputDirectory /path/to/new-output
 ```
 
-The script builds the six desktop modules and runs the focused IERAUI regression suite. It packages the 42 modified/added source classes and their nested classes, the English language file, notices, and launcher. The remaining engine classes and resources come from official Forge 2.0.15.
+The script builds the six desktop modules and runs the focused IERAUI regression suite. It packages the 66 modified/added source classes and their nested classes, the English language file, notices, and launcher. This includes the bestow view refresh, AI evaluation and blocking-check performance changes, and combat-result reporting. Damage rules, achievement thresholds, card scripts, and shuffling are unchanged. The remaining engine classes and resources come from official Forge 2.0.15.
 
 To package an already-tested build:
 
@@ -20,6 +20,6 @@ To package an already-tested build:
 ./ieraui/scripts/Package-Addon.ps1 -BuiltJar ./forge-gui-desktop/target/forge-gui-desktop-2.0.15-jar-with-dependencies.jar -OutputDirectory ./new-release-output
 ```
 
-The launcher verifies the official base JAR's SHA-256 before loading the addon. Keep this source checkout and `ieraui/ieraui-0.1.14.patch` with the local update. The historical 0.1.12 patch remains for reproducing that older release.
+The launcher verifies the official base JAR's SHA-256 before loading the addon. Keep this source checkout and `ieraui/ieraui-0.1.20.patch` with the local update. The historical 0.1.12 patch remains for reproducing that older release.
 
 See [VALIDATION.md](VALIDATION.md) for verification and [Forge's contribution guide](../../CONTRIBUTING.md) for upstream conventions.

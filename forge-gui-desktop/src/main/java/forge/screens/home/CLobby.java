@@ -176,6 +176,9 @@ public class CLobby implements IDraftEventHandler {
     
     public void update() {
         SwingUtilities.invokeLater(() -> {
+            if (view.getLobby() instanceof forge.gamemodes.match.LocalLobby localLobby) {
+                localLobby.refreshSavedAvatars();
+            }
             final Iterable<DeckProxy> schemeDecks = DeckProxy.getAllSchemeDecks();
             final Iterable<DeckProxy> planarDecks = DeckProxy.getAllPlanarDecks();
 

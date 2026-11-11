@@ -579,6 +579,11 @@ public class Game {
             return;
         }
 
+        // Capture before player cleanup can remove combatants. These are report
+        // lines only; the game's actual life totals and achievements are unchanged.
+        List<String> combatSummary = Boolean.getBoolean("forge.enhancedRulesUi")
+                ? forge.game.combat.CombatResultSummary.describe(this) : java.util.Collections.emptyList();
+
         for (Player p : allPlayers) {
             p.clearController();
         }
@@ -601,6 +606,10 @@ public class Game {
         // The log shall listen to events and generate text internally
         if (maingame == null) {
             fireEvent(new GameEventGameOutcome(result, match.getOutcomes()));
+            // GameLog's outcome view is newest-first.
+            for (int i = combatSummary.size() - 1; i >= 0; i--) {
+                gameLog.add(GameLogEntryType.GAME_OUTCOME, combatSummary.get(i));
+            }
         }
     }
 

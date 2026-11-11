@@ -21,7 +21,10 @@ import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,6 +45,7 @@ import forge.deck.DeckRuleColorIdentity;
 import forge.deck.DeckSection;
 import forge.game.GameType;
 import forge.gui.GuiBase;
+import forge.gui.EnhancedRulesUi;
 import forge.gui.GuiChoose;
 import forge.gui.GuiUtils;
 import forge.gui.UiCommand;
@@ -417,6 +421,88 @@ public abstract class ACEditorBase<TItem extends InventoryItem, TModel extends D
         return new EditorContextMenuBuilder(isAddContextMenu0);
     }
 
+    boolean supportsDeckQuantityMenu() {
+        return EnhancedRulesUi.isEnabled() && getCatalogManager() != null && getCatalogManager().isInfinite()
+                && (sectionMode == DeckSection.Main || sectionMode == DeckSection.Sideboard);
+    }
+
+    /** Capture the deck selection, independently of the catalog selection and its filters. */
+    List<JMenu> createDeckQuantityMenus() {
+        final Localizer loc = Localizer.getInstance();
+        final List<TItem> selected = new ArrayList<>(new LinkedHashSet<>(getDeckManager().getSelectedItems()));
+        if (selected.isEmpty()) { return List.of(); }
+        final TModel model = getDeckController().getModel();
+        final DeckSection section = sectionMode;
+        final List<JMenu> menus = new ArrayList<>();
+        for (final boolean adding : new boolean[] {true, false}) {
+            final JMenu quantities = GuiUtils.createMenu(loc.getMessage(adding ? "lblIERAAddCopies" : "lblIERARemoveCopies"));
+            for (int count = 1; count <= 4; count++) {
+                final int quantity = count;
+                final String label = selected.size() > 1 ? loc.getMessage("lblIERACopiesEach", quantity)
+                        : loc.getMessage(quantity == 1 ? "lblIERAOneCopy" : "lblIERACopies", quantity);
+                final boolean enabled = deckQuantityItems(selected, quantity, adding) != null;
+                final var item = GuiUtils.createMenuItem(label, null,
+                        () -> applyDeckQuantityChange(selected, quantity, adding, model, section), enabled, false);
+                if (!enabled) {
+                    item.setToolTipText(loc.getMessage(adding ? "lblIERACopyLimit" : "lblIERANotEnoughCopies"));
+                }
+                quantities.add(item);
+            }
+            if (!adding) {
+                final int max = selected.stream().mapToInt(getDeckManager()::getItemCount).min().orElse(0);
+                if (max > 4) {
+                    quantities.addSeparator();
+                    GuiUtils.addMenuItem(quantities, loc.getMessage("lblIERAOtherQuantity"), null, () -> {
+                        Integer quantity = GuiChoose.getInteger(loc.getMessage("lblIERARemoveCopies"), 1, max, 20);
+                        if (quantity != null) { applyDeckQuantityChange(selected, quantity, false, model, section); }
+                    });
+                }
+            }
+            menus.add(quantities);
+        }
+        return menus;
+    }
+
+    /** Exact quantities only: don't silently clamp a requested four copies to one. */
+    private ItemPool<TItem> deckQuantityItems(final List<TItem> selected, final int quantity, final boolean adding) {
+        if (!supportsDeckQuantityMenu() || selected.isEmpty() || quantity <= 0) { return null; }
+        final ItemPool<TItem> requested = new ItemPool<>(getDeckManager().getGenericType());
+        final ItemPool<TItem> byName = new ItemPool<>(getDeckManager().getGenericType());
+        final Map<String, TItem> representatives = new LinkedHashMap<>();
+        for (final TItem item : selected) {
+            if (!(item instanceof PaperCard card) || getDeckManager().getItemCount(item) < (adding ? 1 : quantity)) {
+                return null;
+            }
+            requested.add(item, quantity);
+            // Different printings still share the same deck-copy limit.
+            final TItem representative = representatives.computeIfAbsent(card.getRules().getNormalizedName(), name -> item);
+            byName.add(representative, quantity);
+        }
+        if (adding) {
+            final ItemPool<TItem> allowed = getAllowedAdditions(byName);
+            for (final Entry<TItem, Integer> entry : byName) {
+                if (allowed.count(entry.getKey()) != entry.getValue()) { return null; }
+            }
+        }
+        return requested;
+    }
+
+    void applyDeckQuantityChange(final List<TItem> selected, final int quantity, final boolean adding,
+                                 final TModel model, final DeckSection section) {
+        if (getDeckController().getModel() != model || sectionMode != section) { return; }
+        // Recheck at activation in case the model changed while the popup was open.
+        final ItemPool<TItem> items = deckQuantityItems(selected, quantity, adding);
+        if (items == null) { return; }
+        if (adding) { addItems(items, false); }
+        else { removeItems(items, false); }
+        refreshQuantityStatistics();
+    }
+
+    void refreshQuantityStatistics() {
+        CStatistics.SINGLETON_INSTANCE.update();
+        CProbabilities.SINGLETON_INSTANCE.update();
+    }
+
     protected class EditorContextMenuBuilder implements ContextMenuBuilder {
         private final boolean isAddContextMenu;
         private JPopupMenu menu;
@@ -620,6 +706,10 @@ public abstract class ACEditorBase<TItem extends InventoryItem, TModel extends D
         }
 
         public void addMoveItems(final String verb, final String dest) {
+            if (!isAddContextMenu && supportsDeckQuantityMenu()) {
+                for (final JMenu quantities : createDeckQuantityMenus()) { menu.add(quantities); }
+                return;
+            }
             addItems(verb, dest, false, 0, InputEvent.SHIFT_DOWN_MASK, InputEvent.ALT_DOWN_MASK);
         }
 

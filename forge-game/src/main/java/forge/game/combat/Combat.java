@@ -925,6 +925,17 @@ public class Combat {
         return assignedDamage;
     }
 
+    /** Current power only: deliberately not a prediction of damage or future life. */
+    public long getRemainingUnblockedPower(Player defender) {
+        long power = 0;
+        for (Card attacker : getUnblockedAttackers()) {
+            if (getDefenderByAttacker(attacker) == defender && dealDamageThisPhase(attacker, false)) {
+                power += Math.max(0, attacker.getNetPower());
+            }
+        }
+        return power;
+    }
+
     public void dealAssignedDamage() {
         final Game game = playerWhoAttacks.getGame();
         game.copyLastState();

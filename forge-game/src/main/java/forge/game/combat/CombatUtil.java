@@ -752,11 +752,13 @@ public class CombatUtil {
         final CardCollection requirementCards = new CardCollection();
         final Player defender = blocker.getController();
         for (final Card attacker : attackers) {
-            if (getBlockCost(blocker.getGame(), blocker, attacker) != null) {
+            // Most attackers have no unsatisfied blocking requirement. Reject those
+            // before scanning every permanent for blocking costs, once per pair.
+            if (attackerLureSatisfied(attacker, blocker, combat.getBlockers(attacker))) {
                 continue;
             }
 
-            if (attackerLureSatisfied(attacker, blocker, combat.getBlockers(attacker))) {
+            if (getBlockCost(blocker.getGame(), blocker, attacker) != null) {
                 continue;
             }
 
@@ -907,6 +909,12 @@ public class CombatUtil {
             return false;
         }
 
+        // Reject pair restrictions before scanning blocking limits and requirements.
+        // Large flying armies otherwise repeat those whole-board scans for every
+        // ground creature, even though none of those pairs could ever block.
+        if (StaticAbilityCantAttackBlock.cantBlockBy(attacker, blocker)) {
+            return false;
+        }
         if (!canBlock(blocker, combat)) {
             return false;
         }
@@ -952,7 +960,7 @@ public class CombatUtil {
             return false;
         }
 
-        return canBlock(attacker, blocker);
+        return true;
     }
 
     // can the blocker block the attacker?
@@ -988,15 +996,11 @@ public class CombatUtil {
             return false;
         }
 
-        if (!canBlock(blocker, nextTurn)) {
-            return false;
-        }
-
         if (StaticAbilityCantAttackBlock.cantBlockBy(attacker, blocker)) {
             return false;
         }
 
-        return true;
+        return canBlock(blocker, nextTurn);
     }
 
     public static boolean canAttackerBeBlockedWithAmount(Card attacker, int amount, Combat combat) {

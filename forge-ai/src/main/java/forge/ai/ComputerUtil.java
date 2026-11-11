@@ -3186,6 +3186,7 @@ public class ComputerUtil {
         return predictNextCombatsRemainingLife(ai, serious, checkDiff, payment, excludedBlockers, ai.getOpponents());
     }
     public static int predictNextCombatsRemainingLife(Player ai, boolean serious, boolean checkDiff, int payment, final CardCollection excludedBlockers, final List<Player> opps) {
+        AiEvaluation.check();
         // life won't change
         int remainingLife = Integer.MAX_VALUE;
 
@@ -3198,12 +3199,14 @@ public class ComputerUtil {
         // TODO should also consider them as teams (with increased likelihood to be attacked by multiple if ai is biggest threat)
         // TODO worth it to sort by creature amount for chance to terminate earlier?
         for (Player opp: opps) {
+            AiEvaluation.check();
             Combat combat = new Combat(opp);
             boolean containsAttacker = false;
             boolean thisCombat = ai.getGame().getPhaseHandler().isPlayerTurn(opp) && ai.getGame().getPhaseHandler().getPhase().isBefore(PhaseType.COMBAT_BEGIN);
 
             // TODO !thisCombat should include cards that will phase in
             for (Card att : opp.getCreaturesInPlay()) {
+                AiEvaluation.check();
                 // TODO should be limited based on how much getAttackCost the opp can pay
                 if ((thisCombat && CombatUtil.canAttack(att, ai)) || (!thisCombat && ComputerUtilCombat.canAttackNextTurn(att, ai))) {
                     // TODO need to copy the card
